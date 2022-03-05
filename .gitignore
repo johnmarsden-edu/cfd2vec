@@ -151,3 +151,5 @@ gradle-app.setting
 .classpath
 
 data
+
+.vscode
