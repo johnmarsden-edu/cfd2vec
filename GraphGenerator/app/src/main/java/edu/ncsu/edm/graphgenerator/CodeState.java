@@ -7,8 +7,13 @@ public class CodeState {
     @CsvBindByName(column = "CodeStateID", required = true)
     private String codeStateId;
 
-    @CsvBindByName(column = "Code", required = false)
+    @CsvBindByName(column = "Code")
     private String code;
+
+    public CodeState(String codeStateId, String code) {
+        this.codeStateId = codeStateId;
+        this.code = code;
+    }
 
     public String getCodeStateId() { 
         return this.codeStateId; 
