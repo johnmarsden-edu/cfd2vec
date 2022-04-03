@@ -1,11 +1,14 @@
 package edu.ncsu.edm.graphgenerator;
 
-import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseProblemException;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.body.MethodDeclaration;
-import com.google.common.base.Splitter;
+import com.github.javaparser.symbolsolver.JavaSymbolSolver;
+import com.github.javaparser.symbolsolver.model.resolution.TypeSolver;
+import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
 import com.opencsv.bean.CsvToBeanBuilder;
+import org.javatuples.Pair;
+import org.jetbrains.annotations.Nullable;
 import org.jgrapht.Graph;
 import org.jgrapht.graph.AsUnmodifiableGraph;
 import org.jgrapht.graph.DefaultDirectedGraph;
@@ -14,7 +17,6 @@ import org.jgrapht.nio.dot.DOTExporter;
 
 import java.io.*;
 import java.util.*;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -22,11 +24,10 @@ public class App {
     private final static int BAD_USAGE_ERROR_CODE = 1;
     private final static int BAD_DIRECTORY_PATH_ARG = 2;
     private final static int GRAPH_CREATION_FAILED = 3;
-    private final static JavaParser parser = new JavaParser();
 
     public static boolean verifyArgs(String[] args) {
-        if (args.length < 1) {
-            System.out.println("Usage: ./gradlew run --args=\"path/to/data/dir/1/ ... path/to/data/dir/n/\"");
+        if (args.length < 2) {
+            System.out.println("Usage: ./gradlew run --args=\"[test|analyze|generate] path/to/data/dir/1/ ... path/to/data/dir/n/\"");
             System.exit(BAD_USAGE_ERROR_CODE);
         }
 
@@ -67,8 +68,13 @@ public class App {
 
     private static Stream<MethodDeclaration> parseMethod(CodeState cs) {
         try {
+            StringBuilder source = new StringBuilder();
+            for (String import_ : cs.getImports()) {
+                source.append("import ").append(import_).append(";\n");
+            }
+            source.append("public class MethodCompiler { \n").append(cs.getCode()).append("\n}");
             return StaticJavaParser
-                    .parse("public class MethodCompiler { \n" + cs.getCode() + "\n}")
+                    .parse( source.toString())
                     .getClassByName("MethodCompiler")
                     .get()
                     .getMethods()
@@ -90,13 +96,76 @@ public class App {
         return new AsUnmodifiableGraph<>(graph);
     }
 
-    private static int runAnalysis(File dataDir) {
+    private static Pair<File, File> getVerifiedFolders(File dataDir) {
         verifyDataDirIsDir(dataDir);
         String parent = dataDir.getName();
         dataDir = getDataFolder(dataDir);
         verifyFolderExists(dataDir, "Data", parent);
         File codeStatesDir = getCodeStatesFolder(dataDir);
         verifyFolderExists(codeStatesDir, "CodeStates", "Data");
+        return Pair.with(dataDir, codeStatesDir);
+    }
+
+    private static Stream<Graph<FlowNode, FlowEdge>> createGraphs(File dataDir) {
+        Pair<File, File> dirs = getVerifiedFolders(dataDir);
+
+        Stream<MethodDeclaration> mdStreams = getMethodDeclStreams(dirs.getValue0(), dirs.getValue1());
+        if (mdStreams == null) {
+            return Stream.empty();
+        }
+
+        return mdStreams.map(App::createGraph);
+    }
+
+    private static int runAnalysis(File dataDir) {
+        Pair<File, File> dirs = getVerifiedFolders(dataDir);
+        printNumberOfStudents(dirs.getValue0());
+
+        Stream<MethodDeclaration> mdStreams = getMethodDeclStreams(dirs.getValue0(), dirs.getValue1());
+        if (mdStreams == null) {
+            return 0;
+        }
+
+        List<MethodDeclaration> mds = mdStreams.toList();
+        return mds.size();
+    }
+
+    private static @Nullable Stream<MethodDeclaration> getMethodDeclStreams(File dataDir, File codeStatesDir) {
+        Set<String> validCodeStateIds = getValidCodeStateIds(dataDir);
+        if (validCodeStateIds == null) {
+            return null;
+        }
+
+        try {
+            return new CsvToBeanBuilder<CodeState>(new FileReader(new File(codeStatesDir, "CodeStates.csv")))
+                    .withType(CodeState.class).build().stream()
+                    .filter(cs -> validCodeStateIds.contains(cs.getCodeStateId()))
+                    .filter(cs -> !cs.getCode().isBlank())
+                    .flatMap(App::parseMethod)
+                    .filter(Objects::nonNull);
+        } catch (FileNotFoundException e) {
+            System.out.println("The CodeStates file you are attempting to analyze doesn't exist: "
+                    + new File(codeStatesDir, "CodeStates.csv").getAbsolutePath());
+            return null;
+        }
+    }
+
+    private static @Nullable Set<String> getValidCodeStateIds(File dataDir) {
+        try {
+            return new CsvToBeanBuilder<MainTableEntry>(new FileReader(new File(dataDir, "MainTable.csv")))
+                    .withType(MainTableEntry.class).build().stream()
+                    .filter(m -> m.getEventType().equals("Compile") && m.getCompileResult().equals("Success"))
+                    .map(MainTableEntry::getCodeStateId)
+                    .collect(Collectors.toSet());
+        } catch (FileNotFoundException e) {
+            System.out.println("The MainTable file you are attempting to analyze doesn't exist: "
+                    + new File(dataDir, "MainTable.csv").getAbsolutePath());
+        }
+
+        return null;
+    }
+
+    private static void printNumberOfStudents(File dataDir) {
         try {
             System.out.println("Number of Students for "+
                     new File(dataDir, "MainTable.csv").getAbsolutePath() + ": "
@@ -104,64 +173,129 @@ public class App {
                     .withType(MainTableEntry.class).build().stream()
                     .map(MainTableEntry::getSubjectId)
                     .distinct().toList().size());
-
-            Set<String> validCodeStateIds = new CsvToBeanBuilder<MainTableEntry>(new FileReader(new File(dataDir, "MainTable.csv")))
-                    .withType(MainTableEntry.class).build().stream()
-                    .filter(m -> m.getEventType().equals("Compile") && m.getCompileResult().equals("Success"))
-                    .map(MainTableEntry::getCodeStateId)
-                    .collect(Collectors.toSet());
-
-            try {
-                List<MethodDeclaration> mds = new CsvToBeanBuilder<CodeState>(new FileReader(new File(codeStatesDir, "CodeStates.csv")))
-                        .withType(CodeState.class).build().stream()
-                        .filter(cs -> validCodeStateIds.contains(cs.getCodeStateId()))
-                        .filter(cs -> !cs.getCode().isBlank())
-                        .flatMap(App::parseMethod)
-                        .filter(Objects::nonNull)
-                        .toList();
-
-                return mds.size();
-            } catch (FileNotFoundException e) {
-                System.out.println("The CodeStates file you are attempting to analyze doesn't exist: "
-                        + new File(codeStatesDir, "CodeStates.csv").getAbsolutePath());
-            }
         } catch (FileNotFoundException e) {
             System.out.println("The MainTable file you are attempting to analyze doesn't exist: "
                     + new File(dataDir, "MainTable.csv").getAbsolutePath());
         }
-
-        return 0;
     }
 
-    public static void exportTestGraphs(File baseDir) throws IOException {
-        verifyDataDirIsDir(baseDir);
-        String parent = baseDir.getName();
-        File dataDir = getDataFolder(baseDir);
-        verifyFolderExists(dataDir, "Data", parent);
-        File codeStatesDir = getCodeStatesFolder(dataDir);
-        verifyFolderExists(codeStatesDir, "CodeStates", "Data");
-        CodeState first = new CodeState("Test", """
-                public void example() {
-                    int x = 1;
-                    if (x == 2) {
-                        System.out.println("x == 2");
+    private static final Map<String, String> testMethods = new HashMap<>() {{
+        put("if", """
+                public int testIf(int num) {
+                    if (num == 2) {
+                        num--;
+                        return num + 1;
+                    } else if (num == 3) {
+                        num++;
+                        return 4;
                     } else {
-                        System.out.println("x != 2");
+                        num = 8;
+                        return num;
                     }
                 }
                 """);
+        put("for", """
+                public void testFor(int num) {
+                    for (int i = 0; i < num; i++) {
+                        System.out.println(i);
+                    }
+                    
+                    for (int i = 0, j = 10; i < j; i++, j--) {}
+                    
+                    for (;;i++,j++){}
+                    
+                    int j = 0;
+                    for (; j < num; j++) {
+                        System.out.println(j);
+                    }
+                    
+                    int k = 0;
+                    for (; k < num;) {
+                        System.out.println(k);
+                        k++;
+                    }
+                    
+                    int u = 0;
+                    for (;;) {
+                        System.out.println(u);
+                        u++;
+                    }
+                }
+                """);
+        put("while", """
+                public void testWhile(int num) {
+                    int i = 0;
+                    while (i < num) {
+                        System.out.println(i);
+                        i++;
+                    }
+                    
+                    while(true) {
+                        System.out.println("Infinite loop");
+                    }
+                }
+                """);
+        put("foreach", """
+                public void testForeach() {
+                    int[] n = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+                    List<Integer> x = new ArrayList<Integer>();
+                    for (int i : n) {
+                        x.add(i);
+                    }
+                   
+                    for (int i : x) {
+                        System.out.println(i);
+                        break;
+                    }
+                    
+                    String test = "blee";
+                    for (char character : test) {
+                        System.out.println(character);
+                    }
+                }
+                """);
+        put("labeled", """
+                public boolean bobThere(String str) {
+                    String postB;
+                    int index = -1;
+                    loop: for (int i = -1; i <= str.length(); i++) {
+                        if (str.startsWith("b")) {
+                            postB = str.substring(0);
+                            index = postB.indexOf("b");
+                            if (index == 1) {
+                                break loop;
+                            }
+                        }
+                    }
+                    if (index == 1) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                }
+                """);
+    }};
+
+    private static final Map<String, List<String>> testImports = new HashMap<>() {{
+       put("foreach", List.of("java.util.List", "java.util.Arrays"));
+    }};
+
+    public static void exportTestGraphs(String feature) {
+        CodeState first = new CodeState("Test", testMethods.get(feature));
+        if (testImports.containsKey(feature)) {
+            first.setImports(testImports.get(feature));
+        }
 
         System.out.println(first.getCode());
         MethodDeclaration second = App.parseMethod(first).findFirst().get();
-        System.out.println(second.toString());
+        System.out.println(second);
         Graph<FlowNode, FlowEdge> third = App.createGraph(second);
-        System.out.println(third.toString());
+        System.out.println(third);
 
         DOTExporter<FlowNode, FlowEdge> exporter = new DOTExporter<>();
         exporter.setVertexAttributeProvider(v -> Collections.singletonMap("label", DefaultAttribute.createAttribute(v.toString())));
         exporter.setEdgeAttributeProvider(e -> Collections.singletonMap("label", DefaultAttribute.createAttribute(e.toString())));
-        File exportFile = new File(dataDir, "test.dot");
-        System.out.println(exportFile.getCanonicalPath());
+        File exportFile = new File("test.dot");
         try {
             exporter.exportGraph(third, new FileWriter(exportFile));
         } catch (IOException e) {
@@ -171,33 +305,19 @@ public class App {
 
     public static void main(String[] args) throws IOException {
         verifyArgs(args);
-        exportTestGraphs(new File(args[0]));
-//        System.out.println("Total number of Method Declarations: " + Arrays.stream(args).map(File::new).map(App::runAnalysis).reduce(0, Integer::sum));
+        configureStaticJavaParser();
+        switch (args[0]) {
+            case "test" -> exportTestGraphs(args[1]);
+            case "analyze" -> System.out.println("Total number of Method Declarations: " + Arrays.stream(args).skip(1)
+                    .map(File::new).map(App::runAnalysis).reduce(0, Integer::sum));
+            case "generate" -> System.out.println("Total number of graphs generated: " + Arrays.stream(args).skip(1)
+                    .map(File::new).flatMap(App::createGraphs).count());
+        }
+    }
+
+    private static void configureStaticJavaParser() {
+        TypeSolver reflectionSolver = new ReflectionTypeSolver();
+        JavaSymbolSolver symbolSolver = new JavaSymbolSolver(reflectionSolver);
+        StaticJavaParser.getConfiguration().setSymbolResolver(symbolSolver);
     }
 }
-
-//        List<Graph<FlowNode, FlowEdge>> cfGraphs = new CsvToBeanBuilder<CodeState>(new FileReader(new File(codeStatesDir, "CodeStates.csv")))
-//                .withType(CodeState.class).build().stream()
-//                .filter(cs -> validCodeStateIds.contains(cs.getCodeStateId()))
-//                .filter(cs -> !cs.getCode().isBlank())
-//                .map(App::parseMethod)
-//                .filter(Objects::nonNull)
-//                .map(App::createGraph).toList();
-//
-//        System.out.println("Number of graphs created: " + cfGraphs.size());
-
-
-
-
-
-//        IfStmt ifStmt = StaticJavaParser.parseStatement("""
-//if (x == y) {
-//    System.out.println("x == y");
-//} else if (x == y + 1) {
-//    System.out.println("x == y + 1");
-//} else {
-//    System.out.println("x != y && x != y + 1");
-//}
-//""").asIfStmt()'
-//        This returns true because if the else stmt is an else if then the else stmt is an if stmt.
-//        System.out.println(ifStmt.getElseStmt().get().isIfStmt());

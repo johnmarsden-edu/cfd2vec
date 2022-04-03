@@ -13,16 +13,23 @@ import com.github.javaparser.ast.stmt.*;
 
 public class FlowNode {
     private final Optional<Node> node;
+    private final Optional<String> label;
     private final Optional<String> name;
 
     public FlowNode(Node optNode) {
+        this(optNode, null);
+    }
+
+    public FlowNode(Node optNode, String label) {
         this.node = Optional.of(optNode);
         this.name = Optional.empty();
+        this.label = Optional.ofNullable(label);
     }
 
     public FlowNode(String name) {
         this.node = Optional.empty();
         this.name = Optional.of(name);
+        this.label = Optional.empty();
     }
 
     public Optional<Node> getNode() {
@@ -144,11 +151,10 @@ public class FlowNode {
     }
 
     private static StringBuilder addExpressionsToStringBuilder(StringBuilder sb, NodeList<Expression> exprs) {
-        Stream<Expression> stream = exprs.stream();
-        Optional<Expression> first = stream.findFirst();
+        Optional<Expression> first = exprs.stream().findFirst();
 
         first.ifPresent(expression -> addExpressionToStringBuilder(sb, expression));
-        stream.skip(1).forEach(expr -> {
+        exprs.stream().skip(1).forEach(expr -> {
             sb.append(", ");
             addExpressionToStringBuilder(sb, expr);
         });
@@ -274,7 +280,8 @@ public class FlowNode {
                     sb.append("Case ");
                     addExpressionsToStringBuilder(sb, s.getLabels());
                 }
-                default -> throw new IllegalStateException("Did not handle possible type of node");
+                case Expression e -> addExpressionToStringBuilder(sb, e);
+                default -> throw new IllegalStateException("Did not handle possible type of node: " + current.getClass().getCanonicalName());
             };
 
             return sb.toString();
@@ -309,5 +316,9 @@ public class FlowNode {
         } else {
             throw new IllegalStateException("Neither Node nor Name are present");
         }
+    }
+
+    public Optional<String> getLabel() {
+        return label;
     }
 }

@@ -2,29 +2,25 @@ package edu.ncsu.edm.graphgenerator;
 
 import java.util.Optional;
 
-import com.github.javaparser.ast.expr.Expression;
 import org.jgrapht.graph.DefaultEdge;
 
 public class FlowEdge extends DefaultEdge {
-    Optional<Expression> flowConditionExpr;
+    private final Optional<Boolean> flowCondition;
 
     public FlowEdge() {
-        this.flowConditionExpr = Optional.empty();
+        this.flowCondition = Optional.empty();
     }
 
-    public FlowEdge(Expression flowConditionalExpr) {
-        this.flowConditionExpr = Optional.of(flowConditionalExpr);
+    public FlowEdge(boolean flowCondition) {
+        this.flowCondition = Optional.of(flowCondition);
     }
 
-    public Optional<Expression> getFlowConditionExpr() {
-        return this.flowConditionExpr;
+    public Optional<Boolean> getFlowCondition() {
+        return flowCondition;
     }
 
     @Override
     public String toString() {
-        if (this.flowConditionExpr.isPresent()) {
-            return this.flowConditionExpr.get().toString();
-        }
-        return "";
+        return this.flowCondition.map(Object::toString).orElse("");
     }
 }

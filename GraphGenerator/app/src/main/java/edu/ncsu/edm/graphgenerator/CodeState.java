@@ -2,6 +2,8 @@ package edu.ncsu.edm.graphgenerator;
 
 import com.opencsv.bean.CsvBindByName;
 
+import java.util.List;
+
 public class CodeState {
 
     @CsvBindByName(column = "CodeStateID", required = true)
@@ -10,9 +12,20 @@ public class CodeState {
     @CsvBindByName(column = "Code")
     private String code;
 
+    private List<String> imports;
+
+    public CodeState() {
+        this("Undefined", "Undefined");
+    }
+
     public CodeState(String codeStateId, String code) {
+        this(codeStateId, code, List.of());
+    }
+
+    public CodeState(String codeStateId, String code, List<String> imports) {
         this.codeStateId = codeStateId;
         this.code = code;
+        this.imports = imports;
     }
 
     public String getCodeStateId() { 
@@ -29,5 +42,13 @@ public class CodeState {
 
     public void setCode(String code) {
         this.code = code;
+    }
+
+    public List<String> getImports() {
+        return imports;
+    }
+
+    public void setImports(List<String> imports) {
+        this.imports = imports;
     }
 }
