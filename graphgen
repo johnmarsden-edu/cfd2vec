@@ -1,0 +1,5 @@
+cd GraphGenerator
+./gradlew app:run --args="generate ../data/F19_All/Test ../data/F19_All/Train ../data/S19_All/"
+cd ..
+zip data_zipped/graphs.zip GraphGenerator/Nodes.csv GraphGenerator/Edges.csv
+rm GraphGenerator/Nodes.csv GraphGenerator/Edges.csv

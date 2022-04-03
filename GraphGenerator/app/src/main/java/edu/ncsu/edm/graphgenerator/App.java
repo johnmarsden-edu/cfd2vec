@@ -6,6 +6,7 @@ import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.symbolsolver.JavaSymbolSolver;
 import com.github.javaparser.symbolsolver.model.resolution.TypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
+import com.opencsv.CSVWriter;
 import com.opencsv.bean.CsvToBeanBuilder;
 import org.javatuples.Pair;
 import org.jetbrains.annotations.Nullable;
@@ -36,7 +37,7 @@ public class App {
 
     public static void verifyDataDirIsDir(File dataDir) {
         if (!dataDir.isDirectory()) {
-            System.out.println("Please provide a valid directory");
+            System.out.println("Please provide a valid directory: " + dataDir);
             System.exit(BAD_DIRECTORY_PATH_ARG);
         }
     }
@@ -80,9 +81,8 @@ public class App {
                     .getMethods()
                     .stream();
         } catch (ParseProblemException e) {
+            return Stream.empty();
         }
-
-        return null;
     }
 
     private static Graph<FlowNode, FlowEdge> createGraph(MethodDeclaration md) {
@@ -106,31 +106,30 @@ public class App {
         return Pair.with(dataDir, codeStatesDir);
     }
 
-    private static Stream<Graph<FlowNode, FlowEdge>> createGraphs(File dataDir) {
+    private static Stream<Pair<String, Stream<Graph<FlowNode, FlowEdge>>>> createGraphs(File dataDir) {
         Pair<File, File> dirs = getVerifiedFolders(dataDir);
 
-        Stream<MethodDeclaration> mdStreams = getMethodDeclStreams(dirs.getValue0(), dirs.getValue1());
+        Stream<Pair<String, Stream<MethodDeclaration>>> mdStreams = getMethodDeclStreams(dirs.getValue0(), dirs.getValue1());
         if (mdStreams == null) {
             return Stream.empty();
         }
 
-        return mdStreams.map(App::createGraph);
+        return mdStreams.map(p -> Pair.with(p.getValue0(), p.getValue1().map(App::createGraph)));
     }
 
     private static int runAnalysis(File dataDir) {
         Pair<File, File> dirs = getVerifiedFolders(dataDir);
         printNumberOfStudents(dirs.getValue0());
 
-        Stream<MethodDeclaration> mdStreams = getMethodDeclStreams(dirs.getValue0(), dirs.getValue1());
+        Stream<Pair<String, Stream<MethodDeclaration>>> mdStreams = getMethodDeclStreams(dirs.getValue0(), dirs.getValue1());
         if (mdStreams == null) {
             return 0;
         }
 
-        List<MethodDeclaration> mds = mdStreams.toList();
-        return mds.size();
+        return mdStreams.flatMap(Pair::getValue1).toList().size();
     }
 
-    private static @Nullable Stream<MethodDeclaration> getMethodDeclStreams(File dataDir, File codeStatesDir) {
+    private static @Nullable Stream<Pair<String, Stream<MethodDeclaration>>> getMethodDeclStreams(File dataDir, File codeStatesDir) {
         Set<String> validCodeStateIds = getValidCodeStateIds(dataDir);
         if (validCodeStateIds == null) {
             return null;
@@ -141,8 +140,8 @@ public class App {
                     .withType(CodeState.class).build().stream()
                     .filter(cs -> validCodeStateIds.contains(cs.getCodeStateId()))
                     .filter(cs -> !cs.getCode().isBlank())
-                    .flatMap(App::parseMethod)
-                    .filter(Objects::nonNull);
+                    .map(cs -> Pair.with(cs.getCodeStateId(), parseMethod(cs)))
+                    .filter(p -> Objects.nonNull(p.getValue0()));
         } catch (FileNotFoundException e) {
             System.out.println("The CodeStates file you are attempting to analyze doesn't exist: "
                     + new File(codeStatesDir, "CodeStates.csv").getAbsolutePath());
@@ -303,15 +302,69 @@ public class App {
         }
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void generateGraphs(Stream<String> paths) {
+        try {
+            FileWriter nodeFile = new FileWriter("Nodes.csv");
+            CSVWriter nodeCsv = new CSVWriter(nodeFile);
+            nodeCsv.writeNext(new String[] { "CodeStateId", "NodeId", "NodeData" });
+
+            FileWriter edgeFile = new FileWriter("Edges.csv");
+            CSVWriter edgeCsv = new CSVWriter(edgeFile);
+            edgeCsv.writeNext(new String[]{ "CodeStateId", "Node1Id", "Node2Id", "EdgeData" });
+            try {
+                paths.map(File::new).flatMap(App::createGraphs).limit(100).forEach(
+                        p -> {
+                            List<String[]> nodeLines = new ArrayList<>();
+                            List<String[]> edgeLines = new ArrayList<>();
+                            p.getValue1().forEach(
+                                    g -> {
+                                        int id = 0;
+                                        Map<FlowNode, String> nodeIds = new HashMap<>();
+                                        for (FlowNode n: g.vertexSet()) {
+                                            String idStr = String.valueOf(id);
+                                            nodeIds.put(n, idStr);
+                                            nodeLines.add(new String[]{
+                                                    p.getValue0(),
+                                                    idStr,
+                                                    n.toString()
+                                            });
+                                            id += 1;
+                                        }
+
+                                        for (FlowEdge e: g.edgeSet()) {
+                                            String incomingId = nodeIds.get(g.getEdgeSource(e));
+                                            String outgoingId = nodeIds.get(g.getEdgeTarget(e));
+                                            edgeLines.add(new String[]{
+                                                    p.getValue0(),
+                                                    incomingId,
+                                                    outgoingId,
+                                                    e.toString()
+                                            });
+                                        }
+                                    }
+                            );
+                            nodeCsv.writeAll(nodeLines);
+                            edgeCsv.writeAll(edgeLines);
+                        }
+                );
+            }
+            finally {
+                nodeCsv.close();
+                edgeCsv.close();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) {
         verifyArgs(args);
         configureStaticJavaParser();
         switch (args[0]) {
             case "test" -> exportTestGraphs(args[1]);
             case "analyze" -> System.out.println("Total number of Method Declarations: " + Arrays.stream(args).skip(1)
                     .map(File::new).map(App::runAnalysis).reduce(0, Integer::sum));
-            case "generate" -> System.out.println("Total number of graphs generated: " + Arrays.stream(args).skip(1)
-                    .map(File::new).flatMap(App::createGraphs).count());
+            case "generate" -> generateGraphs(Arrays.stream(args).skip(1));
         }
     }
 
