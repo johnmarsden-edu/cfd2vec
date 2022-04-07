@@ -1,5 +1,7 @@
 package edu.ncsu.edm.graphgenerator;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -15,6 +17,7 @@ public class FlowNode {
     private final Optional<Node> node;
     private final Optional<String> label;
     private final Optional<String> name;
+    private final Map<String, String> metadata;
 
     public FlowNode(Node optNode) {
         this(optNode, null);
@@ -24,12 +27,14 @@ public class FlowNode {
         this.node = Optional.of(optNode);
         this.name = Optional.empty();
         this.label = Optional.ofNullable(label);
+        this.metadata = new HashMap<>();
     }
 
     public FlowNode(String name) {
         this.node = Optional.empty();
         this.name = Optional.of(name);
         this.label = Optional.empty();
+        this.metadata = new HashMap<>();
     }
 
     public Optional<Node> getNode() {
@@ -38,6 +43,14 @@ public class FlowNode {
 
     public Optional<String> getName() {
         return this.name;
+    }
+
+    public void addMetadata(String key, String value) {
+        this.metadata.put(key, value);
+    }
+
+    public String getMetadata(String key) {
+        return this.metadata.get(key);
     }
 
     private static long blockNum = 0;

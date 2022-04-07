@@ -154,3 +154,8 @@ gradle-app.setting
 data
 
 .vscode
+
+Nodes.csv
+Edges.csv
+test.dot
+test.png

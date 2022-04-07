@@ -2,14 +2,11 @@ package edu.ncsu.edm.graphgenerator;
 
 import com.github.javaparser.ast.stmt.Statement;
 import org.jgrapht.Graph;
-import org.jgrapht.nio.DefaultAttribute;
-import org.jgrapht.nio.dot.DOTExporter;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.Stack;
+import java.util.function.Predicate;
 
 public class NodeUtils {
     public static Statement getParentStatement(Statement stmt) {
@@ -19,7 +16,7 @@ public class NodeUtils {
         ).get();
     }
 
-    public static FlowNode getNearestBreakableAncestor(Graph<FlowNode, FlowEdge> graph, FlowNode start) {
+    private static FlowNode getNearestAncestorByConditional(Graph<FlowNode, FlowEdge> graph, FlowNode start, Predicate<FlowNode> condition) {
         Stack<FlowEdge> ancestorEdges = new Stack<>();
         ancestorEdges.addAll(graph.incomingEdgesOf(start));
         Set<FlowEdge> seenEdges = new HashSet<>();
@@ -27,10 +24,7 @@ public class NodeUtils {
         while (!ancestorEdges.isEmpty()) {
             FlowEdge current = ancestorEdges.pop();
             FlowNode ancestor = graph.getEdgeSource(current);
-            if (ancestor.getNode().isPresent() && ancestor.getNode().get() instanceof Statement ancestorNode &&
-                    (ancestorNode.isForStmt() || ancestorNode.isForEachStmt() ||
-                        ancestorNode.isDoStmt() || ancestorNode.isWhileStmt() || ancestorNode.isSwitchStmt())
-            ) {
+            if (condition.test(ancestor)) {
                 return ancestor;
             }
             ancestorEdges.addAll(graph.incomingEdgesOf(ancestor).stream().filter(e -> !seenEdges.contains(e)).toList());
@@ -38,6 +32,27 @@ public class NodeUtils {
         }
 
         throw new IllegalStateException("You asked for a breakable ancestor from a graph that didn't have a breakable ancestor");
+
+    }
+
+    public static FlowNode getNearestContinuableAncestor(Graph<FlowNode, FlowEdge> graph, FlowNode start) {
+        return getNearestAncestorByConditional (graph, start, ancestor ->
+                ancestor.getNode().isPresent() && ancestor.getNode().get() instanceof Statement ancestorNode &&
+                        (ancestorNode.isForStmt() || ancestorNode.isForEachStmt() ||
+                                ancestorNode.isDoStmt() || ancestorNode.isWhileStmt()));
+    }
+
+    public static FlowNode getNearestBreakableAncestor(Graph<FlowNode, FlowEdge> graph, FlowNode start) {
+        return getNearestAncestorByConditional (graph, start, ancestor ->
+                ancestor.getNode().isPresent() && ancestor.getNode().get() instanceof Statement ancestorNode &&
+                (
+                    ancestorNode.isForStmt() ||
+                    ancestorNode.isForEachStmt() ||
+                    ancestorNode.isDoStmt() ||
+                    ancestorNode.isWhileStmt() ||
+                    ancestorNode.isSwitchStmt()
+                )
+        );
     }
 
     public static FlowNode getLabeledAncestor(Graph<FlowNode, FlowEdge> graph, FlowNode start, String label) {

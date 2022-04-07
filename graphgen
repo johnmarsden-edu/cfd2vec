@@ -1,3 +1,13 @@
+set -e
+
+if [[ -f GraphGenerator/Nodes.csv ]]; then
+    rm GraphGenerator/Nodes.csv;
+fi
+
+if [[ -f GraphGenerator/Edges.csv ]]; then
+    rm GraphGenerator/Edges.csv;
+fi
+
 cd GraphGenerator
 ./gradlew app:run --args="generate ../data/F19_All/Test ../data/F19_All/Train ../data/S19_All/"
 cd ..

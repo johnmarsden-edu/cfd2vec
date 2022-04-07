@@ -1,6 +1,7 @@
 package edu.ncsu.edm.graphgenerator;
 
 import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.stmt.*;
@@ -10,10 +11,7 @@ import com.github.javaparser.resolution.types.ResolvedType;
 import com.github.javaparser.resolution.types.parametrization.ResolvedTypeParametersMap;
 import org.jgrapht.Graph;
 
-import java.util.Collection;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, FlowEdge>> {
 
@@ -22,11 +20,12 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
         private final FlowNode target;
         private final FlowEdge edge;
 
-        public Edge(Statement source, Graph<FlowNode, FlowEdge> g) {
+        public Edge(Node source, Graph<FlowNode, FlowEdge> g) {
             FlowNode tempSource = new FlowNode(source);
             Set<FlowEdge> edgeSet = g.outgoingEdgesOf(tempSource);
             if (edgeSet.size() != 1) {
-                throw new IllegalStateException("Somehow we ended up visiting a node that had " + edgeSet.size() + " outgoing edges instead of 1");
+                throw new IllegalStateException("Somehow we ended up visiting the node " + source + " that had " +
+                        edgeSet.size() + " outgoing edges instead of 1. Here's the graph:\n" + g);
             }
             this.edge = edgeSet.stream().findFirst().get();
 
@@ -66,6 +65,15 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
             FlowNode edgeSource = g.getEdgeSource(iEdge);
             FlowEdge edge = iEdge.getFlowCondition().isPresent() ? new FlowEdge(iEdge.getFlowCondition().get()) : new FlowEdge();
             g.addEdge(edgeSource, target, edge);
+        }
+    }
+
+    public static void rerouteOutgoingEdges(FlowNode source, FlowNode target, Graph<FlowNode, FlowEdge> g) {
+        Set<FlowEdge> incomingEdges = g.outgoingEdgesOf(source);
+        for (FlowEdge iEdge : incomingEdges) {
+            FlowNode edgeTarget = g.getEdgeTarget(iEdge);
+            FlowEdge edge = iEdge.getFlowCondition().isPresent() ? new FlowEdge(iEdge.getFlowCondition().get()) : new FlowEdge();
+            g.addEdge(target, edgeTarget, edge);
         }
     }
 
@@ -323,11 +331,14 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
         FlowNode body = new FlowNode(whileStmt.getBody());
         g.addVertex(decisionNode);
         g.addVertex(body);
+        g.removeEdge(edge.getEdge());
+        g.addEdge(edge.getSource(), edge.getTarget(), new FlowEdge(false));
+        g.addEdge(edge.getSource(), decisionNode, new FlowEdge(true));
         addDecisionNode(decisionNode, body, edge.getTarget(), g);
-        rerouteIncomingEdges(edge.getSource(), decisionNode, g);
         g.addEdge(body, decisionNode);
-        g.removeVertex(edge.getSource());
         super.visit(whileStmt, g);
+        rerouteIncomingEdges(edge.getSource(), decisionNode, g);
+        g.removeVertex(edge.getSource());
     }
 
     @Override
@@ -373,43 +384,120 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
         super.visit(breakStmt, g);
     }
 
+    @Override
+    public void visit(ContinueStmt continueStmt, Graph<FlowNode, FlowEdge> g) {
+        final Edge edge = new Edge(continueStmt, g);
+        FlowNode ancestor;
+        if (continueStmt.getLabel().isPresent()) {
+            ancestor = NodeUtils.getLabeledAncestor(g, edge.getSource(), continueStmt.getLabel().get().asString());
+        } else {
+            ancestor = NodeUtils.getNearestContinuableAncestor(g, edge.getSource());
+        }
+        ancestor = g.getEdgeTarget(g.outgoingEdgesOf(ancestor).stream()
+             .filter(e -> e.getFlowCondition().isPresent() && e.getFlowCondition().get())
+             .findFirst().orElseThrow());
+
+        Collection<FlowEdge> edges = g.outgoingEdgesOf(edge.getSource()).stream().toList();
+        g.removeAllEdges(edges);
+        rerouteIncomingEdges(edge.getSource(), ancestor, g);
+        g.removeVertex(edge.getSource());
+        super.visit(continueStmt, g);
+    }
+
+    @Override
+    public void visit(ReturnStmt returnStmt, Graph<FlowNode, FlowEdge> g) {
+        throw new UnsupportedOperationException("ReturnStmt's are not yet implemented");
+//        super.visit(returnStmt, g);
+    }
+
+    @Override
+    public void visit(SwitchEntry switchEntry, Graph<FlowNode, FlowEdge> g) {
+        FlowNode switchNode = new FlowNode(switchEntry);
+        switchNode = g.getEdgeTarget(g.incomingEdgesOf(switchNode).stream().findFirst().orElseThrow());
+        Expression cond = null;
+        if (switchEntry.getLabels().isNonEmpty()) {
+            StringBuilder sb = new StringBuilder()
+                    .append(switchNode.getMetadata("varname"))
+                    .append(" == ")
+                    .append(switchEntry.getLabels().get(0));
+            for (Expression e: switchEntry.getLabels().stream().skip(1).toList()) {
+                sb.append(" || ")
+                  .append(switchNode.getMetadata("varname"))
+                  .append(" == ")
+                  .append(e);
+            }
+            cond = StaticJavaParser.parseExpression(sb.toString());
+            FlowNode condNode = new FlowNode(cond);
+            g.addVertex(condNode);
+            rerouteIncomingEdges(switchNode, condNode, g);
+            rerouteOutgoingEdges(switchNode, condNode, g);
+            g.removeVertex(switchNode);
+        }
+        Node entryNode = cond == null ? switchEntry : cond;
+        final Edge edge = new Edge(entryNode, g);
+        FlowNode to = null;
+        if (switchEntry.getStatements().isEmpty()) {
+            to = edge.getTarget();
+        } else {
+            FlowNode parent = null;
+            for (Statement s: switchEntry.getStatements()) {
+                FlowNode current = new FlowNode(s);
+                g.addVertex(current);
+                if (to == null) {
+                    to = current;
+                } else {
+                    g.addEdge(parent, current);
+                }
+                parent = current;
+            }
+            g.addEdge(parent, edge.getTarget(), new FlowEdge(true));
+        }
+
+        List<FlowEdge> remapEdges = g.incomingEdgesOf(edge.getSource()).stream()
+                .filter(e -> e.getFlowCondition().isPresent() && e.getFlowCondition().get()).toList();
+        if (!remapEdges.isEmpty()) {
+            for (FlowEdge e: remapEdges) {
+                FlowNode from = g.getEdgeSource(e);
+                g.removeEdge(e);
+                g.addEdge(from, to, new FlowEdge(true));
+            }
+        }
+        if (switchEntry.getLabels().isEmpty()) {
+            g.addEdge(edge.getSource(), to);
+        } else {
+            g.addEdge(edge.getSource(), to, new FlowEdge(true));
+        }
+        super.visit(switchEntry, g);
+        if (switchEntry.getLabels().isEmpty()) {
+            FlowEdge firstEdgeToNode = g.outgoingEdgesOf(edge.getSource()).stream().filter(e -> e.getFlowCondition().isEmpty())
+                    .findFirst().orElseThrow();
+            rerouteIncomingEdges(edge.getSource(), g.getEdgeTarget(firstEdgeToNode), g);
+            g.removeVertex(edge.getSource());
+        }
+    }
+
      @Override
-     public void visit(ContinueStmt continueStmt, Graph<FlowNode, FlowEdge> g) {
-         final Edge edge = new Edge(continueStmt, g);
-         FlowNode ancestor;
-         if (continueStmt.getLabel().isPresent()) {
-             ancestor = NodeUtils.getLabeledAncestor(g, edge.getSource(), continueStmt.getLabel().get().asString());
-         } else {
-             ancestor = NodeUtils.getNearestBreakableAncestor(g, edge.getSource());
-         }
-         ancestor = g.getEdgeTarget(g.outgoingEdgesOf(ancestor).stream()
-                 .filter(e -> e.getFlowCondition().isPresent() && e.getFlowCondition().get())
-                 .findFirst().orElseThrow());
+    public void visit(SwitchStmt switchStmt, Graph<FlowNode, FlowEdge> g) {
+        final Edge edge = new Edge(switchStmt, g);
+        g.removeEdge(edge.getEdge());
+        g.addEdge(edge.getSource(), edge.getTarget(), new FlowEdge(false));
 
-         Collection<FlowEdge> edges = g.outgoingEdgesOf(edge.getSource()).stream().toList();
-         g.removeAllEdges(edges);
-         rerouteIncomingEdges(edge.getSource(), ancestor, g);
-         g.removeVertex(edge.getSource());
-         super.visit(continueStmt, g);
-     }
-
-    // @Override
-    // public void visit(ReturnStmt returnStmt, Graph<FlowNode, FlowEdge> g) {
-    //     System.out.println("Return Statement");
-    //     super.visit(returnStmt, g);
-    // }
-
-    // @Override
-    // public void visit(SwitchEntry switchEntry, Graph<FlowNode, FlowEdge> g) {
-    //     System.out.println("Switch Entry");
-    //     super.visit(switchEntry, g);
-    // }
-
-    // @Override
-    // public void visit(SwitchStmt switchStmt, Graph<FlowNode, FlowEdge> g) {-
-    //     System.out.println("Switch Statement");
-    //     super.visit(switchStmt, g);
-    // }
+        FlowNode parent = edge.getSource();
+        for (SwitchEntry se : switchStmt.getEntries()) {
+            FlowNode current = new FlowNode(se);
+            current.addMetadata("varname", switchStmt.getSelector().toString());
+            g.addVertex(current);
+            g.addEdge(parent, current, new FlowEdge(false));
+            parent = current;
+        }
+        g.addEdge(parent, edge.getTarget(), new FlowEdge(false));
+        super.visit(switchStmt, g);
+        FlowNode first = g.getEdgeTarget(g.outgoingEdgesOf(edge.getSource()).stream()
+                .filter(e -> !g.getEdgeTarget(e).equals(edge.getTarget()))
+                .findFirst().orElseThrow());
+        rerouteIncomingEdges(edge.getSource(), first, g);
+        g.removeVertex(edge.getSource());
+    }
 
     // TODO: Handle TryStmt, CatchClause, ThrowStmt, and YieldStmt as well
 

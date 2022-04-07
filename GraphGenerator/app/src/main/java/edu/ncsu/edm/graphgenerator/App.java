@@ -232,6 +232,28 @@ public class App {
                     while(true) {
                         System.out.println("Infinite loop");
                     }
+                    
+                    String result = "";
+                    boolean control = true;
+                    int index = 0;
+                    int bread = 0;
+                    int secondBread = 0;
+                    while (control) {
+                        bread = str.indexOf("bread", index);
+                        if ((bread) + 5 == str.length()) {
+                            break;
+                        } else if (bread == -1) {
+                            break;
+                        }
+                        index = bread + 5;
+                        secondBread = str.indexOf("bread", index);
+                        if (secondBread == -1) {
+                            break;
+                        }
+                        if (control) {
+                            result = str.substring(index, secondBread);
+                        }
+                    }
                 }
                 """);
         put("foreach", """
@@ -273,6 +295,64 @@ public class App {
                     }
                 }
                 """);
+        put("switch", """
+                public String alarmClock(int day, boolean vacation) {
+                    String alarm = "";
+                    if (vacation) {
+                        switch(day) {
+                            case 0:
+                                alarm = "off";
+                                break;
+                            case 1:
+                                alarm = "10:00";
+                                break;
+                            case 2:
+                                alarm = "10:00";
+                                break;
+                            case 3:
+                                alarm = "10:00";
+                                break;
+                            case 4:
+                                alarm = "10:00";
+                                break;
+                            case 5:
+                                alarm = "10:00";
+                                break;
+                            case 6:
+                                alarm = "off";
+                                break;
+                        }
+                    } else {
+                        switch(day) {
+                            case 0:
+                                alarm = "10:00";
+                                break;
+                            case 1:
+                                alarm = "7:00";
+                                break;
+                            case 2:
+                                alarm = "7:00";
+                                break;
+                            case 3:
+                                alarm = "7:00";
+                                break;
+                            case 4:
+                                alarm = "7:00";
+                                break;
+                            case 5:
+                                alarm = "7:00";
+                                break;
+                            case 6:
+                                alarm = "10:00";
+                                break;
+                            default:
+                                alarm = "6:00";
+                                break;
+                        }
+                    }
+                    return alarm;
+                }
+                """);
     }};
 
     private static final Map<String, List<String>> testImports = new HashMap<>() {{
@@ -312,7 +392,7 @@ public class App {
             CSVWriter edgeCsv = new CSVWriter(edgeFile);
             edgeCsv.writeNext(new String[]{ "CodeStateId", "Node1Id", "Node2Id", "EdgeData" });
             try {
-                paths.map(File::new).flatMap(App::createGraphs).limit(100).forEach(
+                paths.map(File::new).flatMap(App::createGraphs).forEach(
                         p -> {
                             List<String[]> nodeLines = new ArrayList<>();
                             List<String[]> edgeLines = new ArrayList<>();
