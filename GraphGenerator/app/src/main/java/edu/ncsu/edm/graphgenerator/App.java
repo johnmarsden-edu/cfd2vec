@@ -18,6 +18,8 @@ import org.jgrapht.nio.dot.DOTExporter;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -472,14 +474,27 @@ public class App {
 
             FileWriter edgeFile = new FileWriter("Edges.csv");
             CSVWriter edgeCsv = new CSVWriter(edgeFile);
-            edgeCsv.writeNext(new String[]{ "CodeStateId", "Node1Id", "Node2Id", "EdgeData" });
+            edgeCsv.writeNext(new String[] { "CodeStateId", "Node1Id", "Node2Id", "EdgeData" });
+
+            FileWriter statsFile = new FileWriter("Stats.csv");
+            CSVWriter statsCsv = new CSVWriter(statsFile);
+            statsCsv.writeNext(new String[] { "Number of Graphs", "Number of CodeStates"});
+
+            AtomicInteger numGraphs = new AtomicInteger(0);
+            AtomicInteger numCodeStates = new AtomicInteger(0);
             try {
                 paths.map(File::new).flatMap(App::createGraphs).forEach(
                         p -> {
                             List<String[]> nodeLines = new ArrayList<>();
                             List<String[]> edgeLines = new ArrayList<>();
+                            AtomicBoolean first = new AtomicBoolean(true);
                             p.getValue1().forEach(
                                     g -> {
+                                        if (first.get()) {
+                                            numCodeStates.incrementAndGet();
+                                            first.set(false);
+                                        }
+                                        numGraphs.incrementAndGet();
                                         int id = 0;
                                         Map<FlowNode, String> nodeIds = new HashMap<>();
                                         for (FlowNode n: g.vertexSet()) {
@@ -511,6 +526,8 @@ public class App {
                 );
             }
             finally {
+                statsCsv.writeNext(new String[] { numGraphs.toString(), numCodeStates.toString() });
+                statsCsv.close();
                 nodeCsv.close();
                 edgeCsv.close();
             }
@@ -533,6 +550,6 @@ public class App {
     private static void configureStaticJavaParser() {
         TypeSolver reflectionSolver = new ReflectionTypeSolver();
         JavaSymbolSolver symbolSolver = new JavaSymbolSolver(reflectionSolver);
-        StaticJavaParser.getConfiguration().setSymbolResolver(symbolSolver);
+        StaticJavaParser.getConfiguration().setSymbolResolver(symbolSolver).setAttributeComments(false);
     }
 }

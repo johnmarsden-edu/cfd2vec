@@ -79,8 +79,8 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
 
     @Override
     public void visit(MethodDeclaration methodDeclaration, Graph<FlowNode, FlowEdge> g) {
-        FlowNode callNode = new FlowNode("before " + methodDeclaration.getNameAsString());
-        FlowNode finishNode = new FlowNode("after " + methodDeclaration.getNameAsString());
+        FlowNode callNode = new FlowNode("before");
+        FlowNode finishNode = new FlowNode("after");
         g.addVertex(callNode);
         g.addVertex(finishNode);
         FlowNode mdNode = new FlowNode(methodDeclaration);
@@ -94,6 +94,8 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
         g.addEdge(mdNode, methodBody);
         g.addEdge(methodBody, finishNode);
         super.visit(methodDeclaration, g);
+        rerouteIncomingEdges(mdNode, g.getEdgeTarget(g.outgoingEdgesOf(mdNode).stream().findFirst().orElseThrow()), g);
+        g.removeVertex(mdNode);
     }
 
     private static int numIndexes = 0;
