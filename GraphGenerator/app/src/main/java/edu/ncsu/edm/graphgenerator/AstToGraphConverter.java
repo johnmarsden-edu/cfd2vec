@@ -254,12 +254,10 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
             }
         }
 
-        g.addEdge(edge.getSource(), decisionNode, new FlowEdge(true));
-
         // Create links from update step to conditional step
-        g.addEdge(Objects.requireNonNullElse(updateNode, body), decisionNode);
+        g.addEdge(Objects.requireNonNullElse(updateNode, body), parent);
         g.addEdge(parent, startNode);
-        g.addEdge(parent, decisionNode, new FlowEdge(true));
+        g.addEdge(parent, Objects.requireNonNullElse(updateNode, decisionNode), new FlowEdge(true));
         g.removeEdge(edge.getEdge());
         g.addEdge(parent, target, new FlowEdge(false));
 
@@ -293,10 +291,12 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
 
         FlowNode decisionNode = createAndAddDecisionNode(ifStmt.getCondition(), trueTarget, falseTarget, g);
         g.addEdge(trueTarget, edge.getTarget());
-
+        g.addEdge(edge.getSource(), decisionNode);
+        g.removeEdge(edge.getEdge());
+        g.addEdge(edge.getSource(), edge.getTarget(), new FlowEdge(false));
+        super.visit(ifStmt, g);
         rerouteIncomingEdges(edge.getSource(), decisionNode, g);
         g.removeVertex(edge.getSource());
-        super.visit(ifStmt, g);
     }
 
     @Override
@@ -335,7 +335,7 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
         g.addEdge(edge.getSource(), edge.getTarget(), new FlowEdge(false));
         g.addEdge(edge.getSource(), decisionNode, new FlowEdge(true));
         addDecisionNode(decisionNode, body, edge.getTarget(), g);
-        g.addEdge(body, decisionNode);
+        g.addEdge(body, edge.getSource());
         super.visit(whileStmt, g);
         rerouteIncomingEdges(edge.getSource(), decisionNode, g);
         g.removeVertex(edge.getSource());
@@ -353,10 +353,20 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
     }
 
     // @Override
-    // public void visit(DoStmt doWhileStmt, Graph<FlowNode, FlowEdge> g) {
-    //     System.out.println("Do-While Statement");
-    //     super.visit(doWhileStmt, g);
-    // }
+    public void visit(DoStmt doWhileStmt, Graph<FlowNode, FlowEdge> g) {
+        final Edge edge = new Edge(doWhileStmt, g);
+        FlowNode body = new FlowNode(doWhileStmt.getBody());
+        g.addVertex(body);
+        FlowNode decisionNode = createAndAddDecisionNode(doWhileStmt.getCondition(), body, edge.getTarget(), g);
+        g.addEdge(body, decisionNode);
+        g.addEdge(edge.getSource(), body);
+        g.addEdge(edge.getSource(), edge.getTarget(), new FlowEdge(false));
+        g.addEdge(edge.getSource(), decisionNode, new FlowEdge(true));
+        super.visit(doWhileStmt, g);
+        body = g.outgoingEdgesOf(edge.getSource()).stream().filter(e -> e.getFlowCondition().isEmpty())
+                .map(g::getEdgeTarget).findFirst().orElseThrow();
+        rerouteIncomingEdges(edge.getSource(), body, g);
+    }
 
     // @Override
     // public void visit(ConditionalExpr ternaryExpr, Graph<FlowNode, FlowEdge> g) {
@@ -390,6 +400,9 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
         FlowNode ancestor;
         if (continueStmt.getLabel().isPresent()) {
             ancestor = NodeUtils.getLabeledAncestor(g, edge.getSource(), continueStmt.getLabel().get().asString());
+            if (ancestor.getNode().isPresent() && ancestor.getNode().get() instanceof IfStmt) {
+                throw new IllegalStateException("Tried to continue to a labeled if statement");
+            }
         } else {
             ancestor = NodeUtils.getNearestContinuableAncestor(g, edge.getSource());
         }
@@ -406,8 +419,11 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
 
     @Override
     public void visit(ReturnStmt returnStmt, Graph<FlowNode, FlowEdge> g) {
-        throw new UnsupportedOperationException("ReturnStmt's are not yet implemented");
-//        super.visit(returnStmt, g);
+        final Edge edge = new Edge(returnStmt, g);
+        FlowNode after = NodeUtils.getNearestReturnableAncestor(g, edge.getSource());
+        g.removeAllEdges(g.outgoingEdgesOf(edge.getSource()).stream().toList());
+        g.addEdge(edge.getSource(), after);
+        super.visit(returnStmt, g);
     }
 
     @Override
@@ -500,5 +516,8 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
     }
 
     // TODO: Handle TryStmt, CatchClause, ThrowStmt, and YieldStmt as well
-
+    @Override
+    public void visit(TryStmt tryStmt, Graph<FlowNode, FlowEdge> g) {
+        throw new UnsupportedOperationException("Try statements are not yet supported");
+    }
 }

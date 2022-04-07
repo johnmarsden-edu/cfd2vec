@@ -89,6 +89,8 @@ public class App {
         Graph<FlowNode, FlowEdge> graph = new DefaultDirectedGraph<>(FlowEdge.class);
         try {
             md.accept(new AstToGraphConverter(), graph);
+        } catch (UnsupportedOperationException e) {
+            return null;
         } catch (Exception e) {
             System.err.println(md);
             throw e;
@@ -114,7 +116,7 @@ public class App {
             return Stream.empty();
         }
 
-        return mdStreams.map(p -> Pair.with(p.getValue0(), p.getValue1().map(App::createGraph)));
+        return mdStreams.map(p -> Pair.with(p.getValue0(), p.getValue1().map(App::createGraph).filter(Objects::nonNull)));
     }
 
     private static int runAnalysis(File dataDir) {
@@ -277,6 +279,20 @@ public class App {
                 """);
         put("labeled", """
                 public boolean bobThere(String str) {
+                    boolean isBalanced = false;
+                    for (int i = 0; i < str.length(); i++) {
+                        OUTER_LOOP: if (str.charAt(i) == 'x') {
+                            for (int j = i; j < str.length(); j++) {
+                                if (str.charAt(j) == 'y') {
+                                    isBalanced = true;
+                                    break OUTER_LOOP;
+                                } else {
+                                    isBalanced = false;
+                                }
+                            }
+                        }
+                    }
+                
                     String postB;
                     int index = -1;
                     loop: for (int i = -1; i <= str.length(); i++) {
@@ -351,6 +367,72 @@ public class App {
                         }
                     }
                     return alarm;
+                }
+                """);
+        put("return", """
+                public static boolean testReturn() {
+                    int x = 12;
+                    if (x == 13) {
+                        return false;
+                    }
+                    
+                    x = 7;
+                    return true;
+                }
+                """);
+        put("break", """
+                public String testBreak(String str, String word) {
+                    // find all appearances of word in str
+                    // save indeces of these appearances
+                    // split each part into a new substring
+                    String str0 = "";
+                    String str1 = "";
+                    String plus = "";
+                    String plus1 = "";
+                    int y = 0;
+                    while (str.contains(word)) {
+                        int x = str.indexOf(word);
+                        if (y == x) {
+                            break;
+                        }
+                        str1 = str.substring(y, x);
+                        for (int i = 0; i < str1.length(); i++) {
+                            plus1 = plus1.concat("+");
+                        }
+                        plus = plus.concat(plus1);
+                        plus = plus.concat(word);
+                        str = str.substring(x + word.length());
+                        y = x;
+                        // return str0;
+                    }
+                    for (int i = 0; i < str.length(); i++) {
+                        plus = plus.concat("+");
+                    }
+                    return plus;
+                }
+                """);
+        put("continue", """
+                public int[] zeroMax(int[] nums) {
+                    int numsLength = nums.length;
+                    int[] result = new int[numsLength];
+                    for (int index = 0; index < numsLength; ++index) {
+                        int currentValue = nums[index];
+                        if (currentValue != 0) {
+                            result[index] = currentValue;
+                            continue;
+                        }
+                        int largestOdd = 0;
+                        for (int oddIndex = index + 1; oddIndex < numsLength; ++oddIndex) {
+                            int currentOddValue = nums[oddIndex];
+                            if (currentOddValue % 2 > 0) {
+                                if (largestOdd < currentOddValue) {
+                                    largestOdd = currentOddValue;
+                                }
+                            }
+                        }
+                        result[index] = largestOdd;
+                    }
+                    return result;
                 }
                 """);
     }};
