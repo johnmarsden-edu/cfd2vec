@@ -520,4 +520,9 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
     public void visit(TryStmt tryStmt, Graph<FlowNode, FlowEdge> g) {
         throw new UnsupportedOperationException("Try statements are not yet supported");
     }
+
+    @Override
+    public void visit(ThrowStmt throwStmt, Graph<FlowNode, FlowEdge> g) {
+        throw new UnsupportedOperationException("Throw statements are not yet supported");
+    }
 }
