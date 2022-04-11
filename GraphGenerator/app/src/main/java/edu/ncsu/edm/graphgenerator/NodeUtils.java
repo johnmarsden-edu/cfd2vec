@@ -2,14 +2,9 @@ package edu.ncsu.edm.graphgenerator;
 
 import com.github.javaparser.ast.stmt.Statement;
 import org.jgrapht.Graph;
-import org.jgrapht.nio.DefaultAttribute;
-import org.jgrapht.nio.dot.DOTExporter;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.function.Predicate;
 
 public class NodeUtils {
     public static Statement getParentStatement(Statement stmt) {
@@ -19,7 +14,9 @@ public class NodeUtils {
         ).get();
     }
 
-    public static FlowNode getNearestBreakableAncestor(Graph<FlowNode, FlowEdge> graph, FlowNode start) {
+    private static FlowNode getNearestAncestorByConditional(Graph<FlowNode, FlowEdge> graph,
+                                                            FlowNode start, Predicate<FlowNode> condition,
+                                                            String condString) {
         Stack<FlowEdge> ancestorEdges = new Stack<>();
         ancestorEdges.addAll(graph.incomingEdgesOf(start));
         Set<FlowEdge> seenEdges = new HashSet<>();
@@ -27,34 +24,58 @@ public class NodeUtils {
         while (!ancestorEdges.isEmpty()) {
             FlowEdge current = ancestorEdges.pop();
             FlowNode ancestor = graph.getEdgeSource(current);
-            if (ancestor.getNode().isPresent() && ancestor.getNode().get() instanceof Statement ancestorNode &&
-                    (ancestorNode.isForStmt() || ancestorNode.isForEachStmt() ||
-                        ancestorNode.isDoStmt() || ancestorNode.isWhileStmt() || ancestorNode.isSwitchStmt())
-            ) {
+            if (condition.test(ancestor)) {
                 return ancestor;
             }
             ancestorEdges.addAll(graph.incomingEdgesOf(ancestor).stream().filter(e -> !seenEdges.contains(e)).toList());
             seenEdges.addAll(graph.incomingEdgesOf(ancestor));
         }
 
-        throw new IllegalStateException("You asked for a breakable ancestor from a graph that didn't have a breakable ancestor");
+        throw new IllegalStateException("You asked for ancestor from a graph that didn't have an ancestor that " +
+                "met this condition: " + condString);
+
+    }
+
+    public static FlowNode getNearestContinuableAncestor(Graph<FlowNode, FlowEdge> graph, FlowNode start) {
+        return getNearestAncestorByConditional (graph, start, ancestor ->
+                ancestor.getNode().isPresent() && ancestor.getNode().get() instanceof Statement ancestorNode &&
+                (ancestorNode.isForStmt() || ancestorNode.isForEachStmt() ||
+                ancestorNode.isDoStmt() || ancestorNode.isWhileStmt()),
+                "can continue to this ancestor"
+        );
+    }
+
+    private static boolean isBreakableNode(FlowNode node) {
+        return node.getNode().isPresent() && node.getNode().get() instanceof Statement ancestorNode &&
+                (
+                        ancestorNode.isForStmt() ||
+                                ancestorNode.isForEachStmt() ||
+                                ancestorNode.isDoStmt() ||
+                                ancestorNode.isWhileStmt() ||
+                                ancestorNode.isSwitchStmt()
+                );
+    }
+
+    public static FlowNode getNearestBreakableAncestor(Graph<FlowNode, FlowEdge> graph, FlowNode start) {
+        return getNearestAncestorByConditional (graph, start, NodeUtils::isBreakableNode,
+                "Can break to this ancestor"
+        );
     }
 
     public static FlowNode getLabeledAncestor(Graph<FlowNode, FlowEdge> graph, FlowNode start, String label) {
-        Stack<FlowEdge> ancestorEdges = new Stack<>();
-        ancestorEdges.addAll(graph.incomingEdgesOf(start));
-        Set<FlowEdge> seenEdges = new HashSet<>();
+        return getNearestAncestorByConditional(graph, start, ancestor ->
+                ancestor.getLabel().isPresent() && ancestor.getLabel().get().equals(label),
+                "Has label " + label);
+    }
 
-        while (!ancestorEdges.isEmpty()) {
-            FlowEdge current = ancestorEdges.pop();
-            FlowNode ancestor = graph.getEdgeSource(current);
-            if (ancestor.getLabel().isPresent() && ancestor.getLabel().get().equals(label)) {
-                return ancestor;
+    public static FlowNode getNearestReturnableAncestor(Graph<FlowNode, FlowEdge> graph, FlowNode start) {
+        for (FlowNode n: graph.vertexSet()) {
+            if (n.getName().isPresent() && n.getName().get().startsWith("after")) {
+                return n;
             }
-            ancestorEdges.addAll(graph.incomingEdgesOf(ancestor).stream().filter(e -> !seenEdges.contains(e)).toList());
-            seenEdges.addAll(graph.incomingEdgesOf(ancestor));
         }
 
-        throw new IllegalStateException("You asked for a labeled ancestor from a graph that didn't have a labeled ancestor labeled " + label);
+        throw new IllegalStateException("You asked for ancestor from a graph that didn't have an ancestor that " +
+                "met this condition: Has a name that starts with 'after'");
     }
 }

@@ -1,5 +1,7 @@
 package edu.ncsu.edm.graphgenerator;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -15,6 +17,7 @@ public class FlowNode {
     private final Optional<Node> node;
     private final Optional<String> label;
     private final Optional<String> name;
+    private final Map<String, String> metadata;
 
     public FlowNode(Node optNode) {
         this(optNode, null);
@@ -24,12 +27,14 @@ public class FlowNode {
         this.node = Optional.of(optNode);
         this.name = Optional.empty();
         this.label = Optional.ofNullable(label);
+        this.metadata = new HashMap<>();
     }
 
     public FlowNode(String name) {
         this.node = Optional.empty();
         this.name = Optional.of(name);
         this.label = Optional.empty();
+        this.metadata = new HashMap<>();
     }
 
     public Optional<Node> getNode() {
@@ -38,6 +43,14 @@ public class FlowNode {
 
     public Optional<String> getName() {
         return this.name;
+    }
+
+    public void addMetadata(String key, String value) {
+        this.metadata.put(key, value);
+    }
+
+    public String getMetadata(String key) {
+        return this.metadata.get(key);
     }
 
     private static long blockNum = 0;
@@ -268,26 +281,9 @@ public class FlowNode {
     @Override
     public String toString() {
         if (this.node.isPresent()) {
-            Node current = this.node.get();
-            StringBuilder sb = new StringBuilder();
-            switch (current) {
-                case MethodDeclaration methodDeclaration -> sb.append(methodDeclaration.getNameAsString());
-                case Statement statement -> {
-                    addStatementToStringBuilder(sb, statement);
-                }
-                case CatchClause c ->  sb.append("Catch ").append(c.getParameter().toString());
-                case SwitchEntry s -> {
-                    sb.append("Case ");
-                    addExpressionsToStringBuilder(sb, s.getLabels());
-                }
-                case Expression e -> addExpressionToStringBuilder(sb, e);
-                default -> throw new IllegalStateException("Did not handle possible type of node: " + current.getClass().getCanonicalName());
-            };
-
-            return sb.toString();
-        }
-
-        if (this.name.isPresent())
+            return this.label.map(s -> s + this.node.get())
+                    .orElseGet(() -> this.node.get().toString());
+        } else if (this.name.isPresent())
             return this.name.get();
         else
             throw new IllegalStateException("Either Node or Name should be set");

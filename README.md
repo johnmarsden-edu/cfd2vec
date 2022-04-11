@@ -5,6 +5,7 @@ This tool can be used to turn control flow graphs and/or data flow graphs into e
 ## Setup
 
 1. First, you need to extract the data which you can do by running `extract_data.sh` in the top-level directory of the repo.
+2. You can generate the graphs by running ./GraphGenerator/gradlew
 
 ## CFG and DFG Generation
 

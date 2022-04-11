@@ -18,6 +18,8 @@ import org.jgrapht.nio.dot.DOTExporter;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -89,6 +91,8 @@ public class App {
         Graph<FlowNode, FlowEdge> graph = new DefaultDirectedGraph<>(FlowEdge.class);
         try {
             md.accept(new AstToGraphConverter(), graph);
+        } catch (UnsupportedOperationException e) {
+            return null;
         } catch (Exception e) {
             System.err.println(md);
             throw e;
@@ -114,7 +118,7 @@ public class App {
             return Stream.empty();
         }
 
-        return mdStreams.map(p -> Pair.with(p.getValue0(), p.getValue1().map(App::createGraph)));
+        return mdStreams.map(p -> Pair.with(p.getValue0(), p.getValue1().map(App::createGraph).filter(Objects::nonNull)));
     }
 
     private static int runAnalysis(File dataDir) {
@@ -232,6 +236,28 @@ public class App {
                     while(true) {
                         System.out.println("Infinite loop");
                     }
+                    
+                    String result = "";
+                    boolean control = true;
+                    int index = 0;
+                    int bread = 0;
+                    int secondBread = 0;
+                    while (control) {
+                        bread = str.indexOf("bread", index);
+                        if ((bread) + 5 == str.length()) {
+                            break;
+                        } else if (bread == -1) {
+                            break;
+                        }
+                        index = bread + 5;
+                        secondBread = str.indexOf("bread", index);
+                        if (secondBread == -1) {
+                            break;
+                        }
+                        if (control) {
+                            result = str.substring(index, secondBread);
+                        }
+                    }
                 }
                 """);
         put("foreach", """
@@ -255,6 +281,20 @@ public class App {
                 """);
         put("labeled", """
                 public boolean bobThere(String str) {
+                    boolean isBalanced = false;
+                    for (int i = 0; i < str.length(); i++) {
+                        OUTER_LOOP: if (str.charAt(i) == 'x') {
+                            for (int j = i; j < str.length(); j++) {
+                                if (str.charAt(j) == 'y') {
+                                    isBalanced = true;
+                                    break OUTER_LOOP;
+                                } else {
+                                    isBalanced = false;
+                                }
+                            }
+                        }
+                    }
+                
                     String postB;
                     int index = -1;
                     loop: for (int i = -1; i <= str.length(); i++) {
@@ -271,6 +311,130 @@ public class App {
                     } else {
                         return false;
                     }
+                }
+                """);
+        put("switch", """
+                public String alarmClock(int day, boolean vacation) {
+                    String alarm = "";
+                    if (vacation) {
+                        switch(day) {
+                            case 0:
+                                alarm = "off";
+                                break;
+                            case 1:
+                                alarm = "10:00";
+                                break;
+                            case 2:
+                                alarm = "10:00";
+                                break;
+                            case 3:
+                                alarm = "10:00";
+                                break;
+                            case 4:
+                                alarm = "10:00";
+                                break;
+                            case 5:
+                                alarm = "10:00";
+                                break;
+                            case 6:
+                                alarm = "off";
+                                break;
+                        }
+                    } else {
+                        switch(day) {
+                            case 0:
+                                alarm = "10:00";
+                                break;
+                            case 1:
+                                alarm = "7:00";
+                                break;
+                            case 2:
+                                alarm = "7:00";
+                                break;
+                            case 3:
+                                alarm = "7:00";
+                                break;
+                            case 4:
+                                alarm = "7:00";
+                                break;
+                            case 5:
+                                alarm = "7:00";
+                                break;
+                            case 6:
+                                alarm = "10:00";
+                                break;
+                            default:
+                                alarm = "6:00";
+                                break;
+                        }
+                    }
+                    return alarm;
+                }
+                """);
+        put("return", """
+                public static boolean testReturn() {
+                    int x = 12;
+                    if (x == 13) {
+                        return false;
+                    }
+                    
+                    x = 7;
+                    return true;
+                }
+                """);
+        put("break", """
+                public String testBreak(String str, String word) {
+                    // find all appearances of word in str
+                    // save indeces of these appearances
+                    // split each part into a new substring
+                    String str0 = "";
+                    String str1 = "";
+                    String plus = "";
+                    String plus1 = "";
+                    int y = 0;
+                    while (str.contains(word)) {
+                        int x = str.indexOf(word);
+                        if (y == x) {
+                            break;
+                        }
+                        str1 = str.substring(y, x);
+                        for (int i = 0; i < str1.length(); i++) {
+                            plus1 = plus1.concat("+");
+                        }
+                        plus = plus.concat(plus1);
+                        plus = plus.concat(word);
+                        str = str.substring(x + word.length());
+                        y = x;
+                        // return str0;
+                    }
+                    for (int i = 0; i < str.length(); i++) {
+                        plus = plus.concat("+");
+                    }
+                    return plus;
+                }
+                """);
+        put("continue", """
+                public int[] zeroMax(int[] nums) {
+                    int numsLength = nums.length;
+                    int[] result = new int[numsLength];
+                    for (int index = 0; index < numsLength; ++index) {
+                        int currentValue = nums[index];
+                        if (currentValue != 0) {
+                            result[index] = currentValue;
+                            continue;
+                        }
+                        int largestOdd = 0;
+                        for (int oddIndex = index + 1; oddIndex < numsLength; ++oddIndex) {
+                            int currentOddValue = nums[oddIndex];
+                            if (currentOddValue % 2 > 0) {
+                                if (largestOdd < currentOddValue) {
+                                    largestOdd = currentOddValue;
+                                }
+                            }
+                        }
+                        result[index] = largestOdd;
+                    }
+                    return result;
                 }
                 """);
     }};
@@ -310,14 +474,27 @@ public class App {
 
             FileWriter edgeFile = new FileWriter("Edges.csv");
             CSVWriter edgeCsv = new CSVWriter(edgeFile);
-            edgeCsv.writeNext(new String[]{ "CodeStateId", "Node1Id", "Node2Id", "EdgeData" });
+            edgeCsv.writeNext(new String[] { "CodeStateId", "Node1Id", "Node2Id", "EdgeData" });
+
+            FileWriter statsFile = new FileWriter("Stats.csv");
+            CSVWriter statsCsv = new CSVWriter(statsFile);
+            statsCsv.writeNext(new String[] { "Number of Graphs", "Number of CodeStates"});
+
+            AtomicInteger numGraphs = new AtomicInteger(0);
+            AtomicInteger numCodeStates = new AtomicInteger(0);
             try {
-                paths.map(File::new).flatMap(App::createGraphs).limit(100).forEach(
+                paths.map(File::new).flatMap(App::createGraphs).forEach(
                         p -> {
                             List<String[]> nodeLines = new ArrayList<>();
                             List<String[]> edgeLines = new ArrayList<>();
+                            AtomicBoolean first = new AtomicBoolean(true);
                             p.getValue1().forEach(
                                     g -> {
+                                        if (first.get()) {
+                                            numCodeStates.incrementAndGet();
+                                            first.set(false);
+                                        }
+                                        numGraphs.incrementAndGet();
                                         int id = 0;
                                         Map<FlowNode, String> nodeIds = new HashMap<>();
                                         for (FlowNode n: g.vertexSet()) {
@@ -349,6 +526,8 @@ public class App {
                 );
             }
             finally {
+                statsCsv.writeNext(new String[] { numGraphs.toString(), numCodeStates.toString() });
+                statsCsv.close();
                 nodeCsv.close();
                 edgeCsv.close();
             }
@@ -371,6 +550,6 @@ public class App {
     private static void configureStaticJavaParser() {
         TypeSolver reflectionSolver = new ReflectionTypeSolver();
         JavaSymbolSolver symbolSolver = new JavaSymbolSolver(reflectionSolver);
-        StaticJavaParser.getConfiguration().setSymbolResolver(symbolSolver);
+        StaticJavaParser.getConfiguration().setSymbolResolver(symbolSolver).setAttributeComments(false);
     }
 }
