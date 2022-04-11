@@ -1,1 +1,4 @@
 jupyterlab
+tensorflow
+pandas
+sklearn
