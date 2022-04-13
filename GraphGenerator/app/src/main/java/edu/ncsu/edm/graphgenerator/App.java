@@ -470,11 +470,11 @@ public class App {
         try {
             FileWriter nodeFile = new FileWriter("Nodes.csv");
             CSVWriter nodeCsv = new CSVWriter(nodeFile);
-            nodeCsv.writeNext(new String[] { "CodeStateId", "NodeId", "NodeData" });
+            nodeCsv.writeNext(new String[] { "CodeStateId", "MethodNum", "NodeId", "NodeData" });
 
             FileWriter edgeFile = new FileWriter("Edges.csv");
             CSVWriter edgeCsv = new CSVWriter(edgeFile);
-            edgeCsv.writeNext(new String[] { "CodeStateId", "Node1Id", "Node2Id", "EdgeData" });
+            edgeCsv.writeNext(new String[] { "CodeStateId", "MethodNum", "Node1Id", "Node2Id", "EdgeData" });
 
             FileWriter statsFile = new FileWriter("Stats.csv");
             CSVWriter statsCsv = new CSVWriter(statsFile);
@@ -487,13 +487,13 @@ public class App {
                         p -> {
                             List<String[]> nodeLines = new ArrayList<>();
                             List<String[]> edgeLines = new ArrayList<>();
-                            AtomicBoolean first = new AtomicBoolean(true);
+                            AtomicInteger numMethods = new AtomicInteger(0);
                             p.getValue1().forEach(
                                     g -> {
-                                        if (first.get()) {
+                                        if (numMethods.get() == 0) {
                                             numCodeStates.incrementAndGet();
-                                            first.set(false);
                                         }
+                                        String nm = Integer.toString(numMethods.incrementAndGet());
                                         numGraphs.incrementAndGet();
                                         int id = 0;
                                         Map<FlowNode, String> nodeIds = new HashMap<>();
@@ -502,6 +502,7 @@ public class App {
                                             nodeIds.put(n, idStr);
                                             nodeLines.add(new String[]{
                                                     p.getValue0(),
+                                                    nm,
                                                     idStr,
                                                     n.toString()
                                             });
@@ -513,6 +514,7 @@ public class App {
                                             String outgoingId = nodeIds.get(g.getEdgeTarget(e));
                                             edgeLines.add(new String[]{
                                                     p.getValue0(),
+                                                    nm,
                                                     incomingId,
                                                     outgoingId,
                                                     e.toString()
