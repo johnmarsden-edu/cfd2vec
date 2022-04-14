@@ -91,6 +91,7 @@ public class App {
         Graph<FlowNode, FlowEdge> graph = new DefaultDirectedGraph<>(FlowEdge.class);
         try {
             md.accept(new AstToGraphConverter(), graph);
+            md.accept(new CanonicalizationConverter(), null);
         } catch (UnsupportedOperationException e) {
             return null;
         } catch (Exception e) {
