@@ -154,7 +154,7 @@ gradle-app.setting
 data
 
 .vscode
-
+**/.idea
 vectors.zip
 Nodes.csv
 Edges.csv
