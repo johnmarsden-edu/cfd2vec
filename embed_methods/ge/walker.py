@@ -12,7 +12,7 @@ from .utils import partition_num
 
 
 class RandomWalker:
-    def __init__(self, G, p=1, q=1, use_rejection_sampling=0):
+    def __init__(self, G, p=1, q=1, use_rejection_sampling=0, get_node_data=False):
         """
         :param G:
         :param p: Return parameter,controls the likelihood of immediately revisiting a node in the walk.
@@ -23,6 +23,11 @@ class RandomWalker:
         self.p = p
         self.q = q
         self.use_rejection_sampling = use_rejection_sampling
+        self.get_node_data = get_node_data
+        if get_node_data:
+          self.node_data = {}
+          for node in G.nodes(data=True):
+            self.node_data[node[0]] = node[1]['data']
 
     def deepwalk_walk(self, walk_length, start_node):
 
@@ -35,7 +40,10 @@ class RandomWalker:
                 walk.append(random.choice(cur_nbrs))
             else:
                 break
-        return walk
+        if self.get_node_data:
+          return [self.node_data[x] for x in walk]
+        else:
+          return walk
 
     def node2vec_walk(self, walk_length, start_node):
 

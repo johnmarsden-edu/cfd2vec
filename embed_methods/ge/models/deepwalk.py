@@ -23,14 +23,15 @@ import pandas as pd
 
 
 class DeepWalk:
-    def __init__(self, graph, walk_length, num_walks, workers=1):
+    def __init__(self, graph, walk_length, num_walks, workers=1, get_node_data=False):
 
         self.graph = graph
         self.w2v_model = None
         self._embeddings = {}
+        self.get_node_data = get_node_data
 
         self.walker = RandomWalker(
-            graph, p=1, q=1, )
+            graph, p=1, q=1, get_node_data=get_node_data)
         self.sentences = self.walker.simulate_walks(
             num_walks=num_walks, walk_length=walk_length, workers=workers, verbose=1)
 
@@ -58,7 +59,11 @@ class DeepWalk:
             return {}
 
         self._embeddings = {}
-        for word in self.graph.nodes():
-            self._embeddings[word] = self.w2v_model.wv[word]
+        if self.get_node_data:
+          for node in self.graph.nodes(data=True):
+            self._embeddings[node[1]['data']] = self.w2v_model.wv[node[1]['data']]
+        else:
+          for word in self.graph.nodes():
+              self._embeddings[word] = self.w2v_model.wv[word]
 
         return self._embeddings
