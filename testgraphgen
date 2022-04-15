@@ -1,0 +1,12 @@
+set -e
+
+if [[ -f *.dot ]]; then
+    rm GraphGenerator/*.dot;
+fi;
+
+cd GraphGenerator;
+./gradlew app:run --args="test all";
+for f in *.dot; do
+    dot -Tpng -o"${f%.*}.png" "${f}";
+done;
+cd ..;

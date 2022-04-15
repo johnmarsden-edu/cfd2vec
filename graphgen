@@ -12,8 +12,8 @@ if [[ -f GraphGenerator/Stats.csv ]]; then
     rm GraphGenerator/Stats.csv;
 fi
 
-cd GraphGenerator
-./gradlew app:run --args="generate ../data/F19_All/Test ../data/F19_All/Train ../data/S19_All/"
-zip ../data_zipped/graphs.zip Nodes.csv Edges.csv Stats.csv
-rm Nodes.csv Edges.csv Stats.csv
-cd ..
+cd GraphGenerator;
+./gradlew app:run --args="generate ../data/F19_All/Test ../data/F19_All/Train ../data/S19_All/";
+zip ../data_zipped/graphs.zip Nodes.csv Edges.csv Stats.csv;
+rm Nodes.csv Edges.csv Stats.csv;
+cd ..;

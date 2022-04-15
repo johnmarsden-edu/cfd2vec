@@ -87,11 +87,21 @@ public class App {
         }
     }
 
+
+    static final CanonicalizationConverter canonicalizationConverter = new CanonicalizationConverter();
+    static final FindStaticNamesVisitor findStaticNamesVisitor = new FindStaticNamesVisitor();
+    static final AstToGraphConverter astToGraphConverter = new AstToGraphConverter();
+    static final Set<String> staticNames = new HashSet<>();
+
     private static Graph<FlowNode, FlowEdge> createGraph(MethodDeclaration md) {
         Graph<FlowNode, FlowEdge> graph = new DefaultDirectedGraph<>(FlowEdge.class);
         try {
-            md.accept(new AstToGraphConverter(), graph);
-            md.accept(new CanonicalizationConverter(), null);
+            staticNames.clear();
+            md.accept(astToGraphConverter, graph);
+            md.accept(findStaticNamesVisitor, staticNames);
+            graph.vertexSet().forEach(fn -> fn.getNode().ifPresent(n -> {
+                n.accept(canonicalizationConverter, staticNames);
+            }));
         } catch (UnsupportedOperationException e) {
             return null;
         } catch (Exception e) {
@@ -185,7 +195,8 @@ public class App {
 
     private static final Map<String, String> testMethods = new HashMap<>() {{
         put("if", """
-                public int testIf(int num) {
+                public int testIf(String test) {
+                    int num = Integer.parseInt(test);
                     if (num == 2) {
                         num--;
                         return num + 1;
@@ -444,7 +455,15 @@ public class App {
        put("foreach", List.of("java.util.List", "java.util.Arrays"));
     }};
 
-    public static void exportTestGraphs(String feature) {
+    private static void exportTestGraphs(boolean runAllTests, Stream<String> features) {
+        if (runAllTests) {
+            testMethods.keySet().forEach(App::generateTestGraphs);
+        } else {
+            features.forEach(App::generateTestGraphs);
+        }
+    }
+
+    public static void generateTestGraphs(String feature) {
         CodeState first = new CodeState("Test", testMethods.get(feature));
         if (testImports.containsKey(feature)) {
             first.setImports(testImports.get(feature));
@@ -459,7 +478,7 @@ public class App {
         DOTExporter<FlowNode, FlowEdge> exporter = new DOTExporter<>();
         exporter.setVertexAttributeProvider(v -> Collections.singletonMap("label", DefaultAttribute.createAttribute(v.toString())));
         exporter.setEdgeAttributeProvider(e -> Collections.singletonMap("label", DefaultAttribute.createAttribute(e.toString())));
-        File exportFile = new File("test.dot");
+        File exportFile = new File(feature + ".dot");
         try {
             exporter.exportGraph(third, new FileWriter(exportFile));
         } catch (IOException e) {
@@ -543,7 +562,7 @@ public class App {
         verifyArgs(args);
         configureStaticJavaParser();
         switch (args[0]) {
-            case "test" -> exportTestGraphs(args[1]);
+            case "test" -> exportTestGraphs(args[1].equals("all"), Arrays.stream(args).skip(1));
             case "analyze" -> System.out.println("Total number of Method Declarations: " + Arrays.stream(args).skip(1)
                     .map(File::new).map(App::runAnalysis).reduce(0, Integer::sum));
             case "generate" -> generateGraphs(Arrays.stream(args).skip(1));

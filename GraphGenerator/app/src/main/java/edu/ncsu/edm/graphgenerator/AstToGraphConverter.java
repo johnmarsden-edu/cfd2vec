@@ -3,6 +3,7 @@ package edu.ncsu.edm.graphgenerator;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.expr.ConditionalExpr;
 import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.LiteralStringValueExpr;
 import com.github.javaparser.ast.expr.StringLiteralExpr;
@@ -372,11 +373,24 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
         rerouteIncomingEdges(edge.getSource(), body, g);
     }
 
-    // @Override
-    // public void visit(ConditionalExpr ternaryExpr, Graph<FlowNode, FlowEdge> g) {
-    //     System.out.println("Ternary Expression");
-    //     super.visit(ternaryExpr, g);
-    // }
+    @Override
+    public void visit(ConditionalExpr ternaryExpr, Graph<FlowNode, FlowEdge> g) {
+        throw new UnsupportedOperationException();
+//        final Edge edge = new Edge(ternaryExpr, g);
+//        FlowNode thenNode = new FlowNode(ternaryExpr.getThenExpr());
+//        g.addVertex(thenNode);
+//        g.addEdge(thenNode, edge.getTarget());
+//
+//        FlowNode elseNode = new FlowNode(ternaryExpr.getElseExpr());
+//        g.addVertex(elseNode);
+//        g.addEdge(elseNode, edge.getTarget());
+//
+//        FlowNode decisionNode = createAndAddDecisionNode(ternaryExpr.getCondition(), thenNode, elseNode, g);
+//
+//        rerouteIncomingEdges(edge.getSource(), decisionNode, g);
+//
+//        super.visit(ternaryExpr, g);
+    }
 
     @Override
     public void visit(BreakStmt breakStmt, Graph<FlowNode, FlowEdge> g) {
