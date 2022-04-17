@@ -69,7 +69,10 @@ class RandomWalker:
             else:
                 break
 
-        return walk
+        if self.get_node_data:
+          return [self.node_data[x] for x in walk]
+        else:
+          return walk
 
     def node2vec_walk2(self, walk_length, start_node):
         """
@@ -122,7 +125,10 @@ class RandomWalker:
                     walk.append(next_node)
             else:
                 break
-        return walk
+        if self.get_node_data:
+          return [self.node_data[x] for x in walk]
+        else:
+          return walk
 
     def simulate_walks(self, num_walks, walk_length, workers=1, verbose=0):
 
