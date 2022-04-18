@@ -2,3 +2,7 @@ jupyterlab
 tensorflow
 pandas
 sklearn
+networkx
+fastdtw
+tqdm
+gensim
