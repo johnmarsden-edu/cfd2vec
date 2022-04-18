@@ -214,11 +214,15 @@ class RandomWalker:
 
 
 class BiasedWalker:
-    def __init__(self, idx2node, temp_path):
+    def __init__(self, idx2node, temp_path, get_node_data=False):
 
         self.idx2node = idx2node
         self.idx = list(range(len(self.idx2node)))
         self.temp_path = temp_path
+        if get_node_data:
+          self.node_data = {}
+          for node in G.nodes(data=True):
+            self.node_data[node[0]] = node[1]['data']
         pass
 
     def simulate_walks(self, num_walks, walk_length, stay_prob=0.3, workers=1, verbose=0):
@@ -277,7 +281,10 @@ class BiasedWalker:
                     if((layer + 1) in graphs and v in graphs[layer + 1]):
                         layer = layer + 1
 
-        return path
+        if self.get_node_data:
+          return [self.node_data[x] for x in path]
+        else:
+          return path
 
 
 def chooseNeighbor(v, graphs, layers_alias, layers_accept, layer):

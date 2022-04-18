@@ -36,7 +36,7 @@ from ..walker import BiasedWalker
 
 
 class Struc2Vec():
-    def __init__(self, graph, walk_length=10, num_walks=100, workers=1, verbose=0, stay_prob=0.3, opt1_reduce_len=True, opt2_reduce_sim_calc=True, opt3_num_layers=None, temp_path='./temp_struc2vec/', reuse=False):
+    def __init__(self, graph, walk_length=10, num_walks=100, workers=1, verbose=0, stay_prob=0.3, opt1_reduce_len=True, opt2_reduce_sim_calc=True, opt3_num_layers=None, temp_path='./temp_struc2vec/', reuse=False, get_node_data=False):
         self.graph = graph
         self.idx2node, self.node2idx = preprocess_nxgraph(graph)
         self.idx = list(range(len(self.idx2node)))
@@ -47,6 +47,7 @@ class Struc2Vec():
 
         self.resue = reuse
         self.temp_path = temp_path
+        self.get_node_data = get_node_data
 
         if not os.path.exists(self.temp_path):
             os.mkdir(self.temp_path)
@@ -56,7 +57,7 @@ class Struc2Vec():
 
         self.create_context_graph(self.opt3_num_layers, workers, verbose)
         self.prepare_biased_walk()
-        self.walker = BiasedWalker(self.idx2node, self.temp_path)
+        self.walker = BiasedWalker(self.idx2node, self.temp_path, get_node_data=self.get_node_data)
         self.sentences = self.walker.simulate_walks(
             num_walks, walk_length, stay_prob, workers, verbose)
 
@@ -124,9 +125,12 @@ class Struc2Vec():
             print("model not train")
             return {}
 
-        self._embeddings = {}
-        for word in self.graph.nodes():
-            self._embeddings[word] = self.w2v_model.wv[word]
+        if self.get_node_data:
+          for node in self.graph.nodes(data=True):
+            self._embeddings[node[1]['data']] = self.w2v_model.wv[node[1]['data']]
+        else:
+          for word in self.graph.nodes():
+              self._embeddings[word] = self.w2v_model.wv[word]
 
         return self._embeddings
 

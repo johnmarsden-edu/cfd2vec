@@ -2,13 +2,13 @@ import networkx as nx
 import pandas as pd
 import os
 import numpy as np
-from embed_methods.ge import Node2Vec
+from embed_methods.ge import Struc2Vec
 
 def main():
   EMBED_SIZE = 50
   graph = load_graphs()
   print('Walking')
-  model = Node2Vec(graph, walk_length=10, num_walks=20, p=2, q=1.5, workers=1, use_rejection_sampling=True, get_node_data=True)
+  model = Struc2Vec(graph, walk_length=10, num_walks=20, workers=1, get_node_data=True, reuse=True)
   print('Done Walking')
   model.train(window_size=5, iter=3, embed_size=EMBED_SIZE)
   embeddings = model.get_embeddings()
@@ -28,7 +28,7 @@ def main():
     embed_data[i] = embed_data[i] / np.linalg.norm(embed_data[i])
   out_csv = pd.DataFrame(embed_data)
   out_csv['CodeStateID'] = ids
-  out_csv.to_csv('node2vec.csv', index=False)
+  out_csv.to_csv('struc2vec.csv', index=False)
   
 def load_graphs():
   nodes = pd.read_csv(os.path.join('data', 'Graphs', 'Nodes.csv'))
