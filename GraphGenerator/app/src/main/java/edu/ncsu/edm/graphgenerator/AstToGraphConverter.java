@@ -5,8 +5,6 @@ import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.ConditionalExpr;
 import com.github.javaparser.ast.expr.Expression;
-import com.github.javaparser.ast.expr.LiteralStringValueExpr;
-import com.github.javaparser.ast.expr.StringLiteralExpr;
 import com.github.javaparser.ast.stmt.*;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import com.github.javaparser.resolution.declarations.ResolvedReferenceTypeDeclaration;
@@ -202,6 +200,7 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
     @Override
     public void visit(ForStmt forStmt, Graph<FlowNode, FlowEdge> g) {
         final Edge edge = new Edge(forStmt, g);
+        FlowNode origin = g.incomingEdgesOf(edge.getSource()).stream().findFirst().map(g::getEdgeSource).orElseThrow();
         FlowNode parent = edge.getSource();
 
         FlowNode target = edge.getTarget();
@@ -235,12 +234,16 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
 
         // Create links from for statement or initialization step to body block
         FlowNode body = new FlowNode(forStmt.getBody());
+        boolean startNodeIsBody = false;
+        boolean decisionNodeIsBody = false;
         g.addVertex(body);
         if (startNode == null) {
             startNode = body;
             decisionNode = body;
+            startNodeIsBody = true;
         } else if (decisionNode == null) {
             decisionNode = body;
+            decisionNodeIsBody = true;
         } else {
             addDecisionNode(decisionNode, body, edge.getTarget(), g);
         }
@@ -267,10 +270,35 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
         g.addEdge(parent, target, new FlowEdge(false));
 
         super.visit(forStmt, g);
+
         Optional<FlowNode> nextStartNode = g.outgoingEdgesOf(parent).stream()
                 .filter(e -> e.getFlowCondition().isEmpty())
                 .map(g::getEdgeTarget)
                 .findFirst();
+
+        if (updateNode != null) {
+            // Reroute update step from parent to decision node
+            Optional<FlowEdge> updateEdge = g.incomingEdgesOf(parent).stream()
+                    .filter(fe -> !g.getEdgeSource(fe).equals(origin))
+                    .findFirst();
+
+            if (updateEdge.isPresent()) {
+                g.removeEdge(updateEdge.get());
+                if (startNodeIsBody && nextStartNode.isPresent()) {
+                    g.addEdge(updateNode, nextStartNode.get());
+                } else if (decisionNodeIsBody && nextStartNode.isPresent()) {
+                    Optional<FlowNode> bodyNode = g.outgoingEdgesOf(nextStartNode.get()).stream().map(g::getEdgeTarget)
+                            .findFirst();
+                    if (bodyNode.isPresent()) {
+                        g.addEdge(updateNode, bodyNode.get());
+                    }
+                } else {
+                    g.addEdge(updateNode, decisionNode);
+                }
+            }
+        }
+
+        // Reroute incoming edges to the new start node
         if (nextStartNode.isPresent()) {
             rerouteIncomingEdges(parent, nextStartNode.get(), g);
             g.removeVertex(parent);
