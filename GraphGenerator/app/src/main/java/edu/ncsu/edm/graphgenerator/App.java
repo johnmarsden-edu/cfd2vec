@@ -449,6 +449,30 @@ public class App {
                     return result;
                 }
                 """);
+        put("aggregateWhile", """
+                public int aggregate(int[] array)
+                {
+                    int sum = 0;
+                    int current = 0;
+                    while (current < array.length) {
+                        sum += array[current];
+                        current += 1;
+                    }
+                    return sum;
+                }
+                                
+                """);
+        put("aggregateFor", """
+                public int aggregate(int[] array)
+                {
+                    int sum = 0;
+                    for (int i = 0; i < array.length; i += 1)
+                    {
+                        sum += array[i];
+                    }
+                    return sum;
+                }
+                """);
     }};
 
     private static final Map<String, List<String>> testImports = new HashMap<>() {{

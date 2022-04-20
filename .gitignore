@@ -159,5 +159,5 @@ vectors.zip
 Nodes.csv
 Edges.csv
 Stats.csv
-test.dot
-test.png
+*.dot
+*.png
