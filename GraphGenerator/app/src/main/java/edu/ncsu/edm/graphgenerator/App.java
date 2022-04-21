@@ -141,7 +141,7 @@ public class App {
             return 0;
         }
 
-        return mdStreams.flatMap(Pair::getValue1).toList().size();
+        return mdStreams.filter(p -> p.getValue1().findFirst().isPresent()).toList().size();
     }
 
     private static @Nullable Stream<Pair<String, Stream<MethodDeclaration>>> getMethodDeclStreams(File dataDir, File codeStatesDir) {
@@ -181,13 +181,14 @@ public class App {
 
     private static void printNumberOfStudents(File dataDir) {
         try {
+            File mainTable =  new File(dataDir, "MainTable.csv");
             System.out.println("Number of Students for "+
-                    new File(dataDir, "MainTable.csv").getAbsolutePath() + ": "
-                    + new CsvToBeanBuilder<MainTableEntry>(new FileReader(new File(dataDir, "MainTable.csv")))
+                   mainTable.getCanonicalPath() + ": "
+                    + new CsvToBeanBuilder<MainTableEntry>(new FileReader(mainTable))
                     .withType(MainTableEntry.class).build().stream()
                     .map(MainTableEntry::getSubjectId)
                     .distinct().toList().size());
-        } catch (FileNotFoundException e) {
+        } catch (IOException e) {
             System.out.println("The MainTable file you are attempting to analyze doesn't exist: "
                     + new File(dataDir, "MainTable.csv").getAbsolutePath());
         }
@@ -526,6 +527,7 @@ public class App {
 
             AtomicInteger numGraphs = new AtomicInteger(0);
             AtomicInteger numCodeStates = new AtomicInteger(0);
+            AtomicInteger totalMethodsFound = new AtomicInteger(0);
             try {
                 paths.map(File::new).flatMap(App::createGraphs).forEach(
                         p -> {
@@ -587,7 +589,7 @@ public class App {
         configureStaticJavaParser();
         switch (args[0]) {
             case "test" -> exportTestGraphs(args[1].equals("all"), Arrays.stream(args).skip(1));
-            case "analyze" -> System.out.println("Total number of Method Declarations: " + Arrays.stream(args).skip(1)
+            case "analyze" -> System.out.println("Total number of Code States: " + Arrays.stream(args).skip(1)
                     .map(File::new).map(App::runAnalysis).reduce(0, Integer::sum));
             case "generate" -> generateGraphs(Arrays.stream(args).skip(1));
         }
