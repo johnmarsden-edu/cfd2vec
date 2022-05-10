@@ -9,7 +9,7 @@ def main():
   EMBED_SIZE = 50
   graph = load_graphs()
   models = [
-    # ('deepwalk.csv', DeepWalk(graph, walk_length=10, num_walks=20, workers=1, get_node_data=True)),
+    ('deepwalk.csv', DeepWalk(graph, walk_length=10, num_walks=20, workers=1, get_node_data=True)),
     ('node2vec.csv', Node2Vec(graph, walk_length=10, num_walks=20, p=1.5, q=1.5, workers=1, get_node_data=True))
   ]
   
