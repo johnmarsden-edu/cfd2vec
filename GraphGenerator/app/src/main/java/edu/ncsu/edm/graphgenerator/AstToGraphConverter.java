@@ -102,6 +102,7 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
     private static int numIndexes = 0;
     private static int numIterators = 0;
 
+    //        Honestly, if I could figure out how to do foreach loops without needing type resolution it would be greatly appreciated
     @Override
     public void visit(ForEachStmt forEachStmt, Graph<FlowNode, FlowEdge> g) {
         final Edge edge = new Edge(forEachStmt, g);

@@ -1,8 +1,12 @@
 package edu.ncsu.edm.graphgenerator;
 
 import com.github.javaparser.ParseProblemException;
+import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.expr.ConditionalExpr;
+import com.github.javaparser.printer.configuration.DefaultPrinterConfiguration;
 import com.github.javaparser.symbolsolver.JavaSymbolSolver;
 import com.github.javaparser.symbolsolver.model.resolution.TypeSolver;
 import com.github.javaparser.symbolsolver.resolution.typesolvers.ReflectionTypeSolver;
@@ -18,7 +22,6 @@ import org.jgrapht.nio.dot.DOTExporter;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -91,12 +94,14 @@ public class App {
     static final CanonicalizationConverter canonicalizationConverter = new CanonicalizationConverter();
     static final FindStaticNamesVisitor findStaticNamesVisitor = new FindStaticNamesVisitor();
     static final AstToGraphConverter astToGraphConverter = new AstToGraphConverter();
+    static final CondExprToIfConverter condExprToIfConverter = new CondExprToIfConverter();
     static final Set<String> staticNames = new HashSet<>();
 
     private static Graph<FlowNode, FlowEdge> createGraph(MethodDeclaration md) {
         Graph<FlowNode, FlowEdge> graph = new DefaultDirectedGraph<>(FlowEdge.class);
         try {
             staticNames.clear();
+            condExprToIfConverter.rewriteAllCondExprsToIf(md);
             md.accept(astToGraphConverter, graph);
             md.accept(findStaticNamesVisitor, staticNames);
             graph.vertexSet().forEach(fn -> fn.getNode().ifPresent(n -> {
@@ -523,7 +528,7 @@ public class App {
 
             FileWriter statsFile = new FileWriter("Stats.csv");
             CSVWriter statsCsv = new CSVWriter(statsFile);
-            statsCsv.writeNext(new String[] { "Number of Graphs", "Number of CodeStates"});
+            statsCsv.writeNext(new String[] { "Number of Graphs", "Number of CodeStates", "Number of Methods with ConditionalExpr"});
 
             AtomicInteger numGraphs = new AtomicInteger(0);
             AtomicInteger numCodeStates = new AtomicInteger(0);
@@ -574,7 +579,7 @@ public class App {
                 );
             }
             finally {
-                statsCsv.writeNext(new String[] { numGraphs.toString(), numCodeStates.toString() });
+                statsCsv.writeNext(new String[] { numGraphs.toString(), numCodeStates.toString(), CondExprToIfConverter.numberOfMethodsWithCondExpr.toString() });
                 statsCsv.close();
                 nodeCsv.close();
                 edgeCsv.close();
@@ -584,11 +589,38 @@ public class App {
         }
     }
 
+    private static void testCondConverter() {
+        String testJava = """
+                import java.util.stream.IntStream;
+                                
+                public class TestCondConverter {
+                    public static void main() {
+                        int x = 5;
+                        int j = x % 2 == 1 ? x % 8 == 3? 1 : 8 : 1;
+                                
+                        int foo = switch (j) {
+                            case 3 -> 4;
+                            case 12 -> x % 7 == 2 ? 4 : 10;
+                            default -> 17;
+                        };
+                                
+                        int bar = IntStream.of(1, 2, 3, 4, 5).map(i -> i % 2 == 0 ? i * 2 : i * 3).sum();
+                    }
+                }
+                """;
+
+        CompilationUnit cu = StaticJavaParser.parse(testJava);
+        CondExprToIfConverter condExprToIfConverter = new CondExprToIfConverter();
+        condExprToIfConverter.rewriteAllCondExprsToIf(cu);
+        System.out.println(cu.toString(new DefaultPrinterConfiguration()));
+    }
+
     public static void main(String[] args) {
         verifyArgs(args);
         configureStaticJavaParser();
         switch (args[0]) {
             case "test" -> exportTestGraphs(args[1].equals("all"), Arrays.stream(args).skip(1));
+            case "testCondConverter" -> testCondConverter();
             case "analyze" -> System.out.println("Total number of Code States: " + Arrays.stream(args).skip(1)
                     .map(File::new).map(App::runAnalysis).reduce(0, Integer::sum));
             case "generate" -> generateGraphs(Arrays.stream(args).skip(1));
@@ -598,6 +630,9 @@ public class App {
     private static void configureStaticJavaParser() {
         TypeSolver reflectionSolver = new ReflectionTypeSolver();
         JavaSymbolSolver symbolSolver = new JavaSymbolSolver(reflectionSolver);
-        StaticJavaParser.getConfiguration().setSymbolResolver(symbolSolver).setAttributeComments(false);
+        StaticJavaParser.getConfiguration()
+                .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_17_PREVIEW)
+                .setSymbolResolver(symbolSolver)
+                .setAttributeComments(false);
     }
 }

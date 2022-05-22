@@ -10,7 +10,7 @@ public class FindStaticNamesVisitor extends VoidVisitorAdapter<Set<String>> {
     @Override
     public void visit(MethodCallExpr methodCallExpr, Set<String> staticNames) {
         try {
-            if (methodCallExpr.hasScope() && methodCallExpr.resolve().isStatic()) {
+            if (methodCallExpr.getScope().isPresent() && methodCallExpr.resolve().isStatic()) {
                 staticNames.add(methodCallExpr.getScope().get().toString());
             }
         } catch (Exception ignore) {}

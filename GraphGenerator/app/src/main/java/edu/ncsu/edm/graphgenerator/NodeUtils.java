@@ -1,6 +1,6 @@
 package edu.ncsu.edm.graphgenerator;
 
-import com.github.javaparser.ast.stmt.Statement;
+import com.github.javaparser.ast.stmt.*;
 import org.jgrapht.Graph;
 
 import java.util.*;
@@ -8,10 +8,7 @@ import java.util.function.Predicate;
 
 public class NodeUtils {
     public static Statement getParentStatement(Statement stmt) {
-        return stmt.findAncestor(Statement.class, s -> s.isDoStmt() || s.isForEachStmt() ||
-               s.isForStmt() || s.isIfStmt() ||
-               s.isWhileStmt()
-        ).get();
+        return (Statement) stmt.findAncestor(t -> true, new Class[]{DoStmt.class, ForEachStmt.class, ForStmt.class, IfStmt.class, WhileStmt.class}).orElseThrow();
     }
 
     private static FlowNode getNearestAncestorByConditional(Graph<FlowNode, FlowEdge> graph,
