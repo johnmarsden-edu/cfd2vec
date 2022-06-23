@@ -5,8 +5,10 @@ import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.ConditionalExpr;
 import com.github.javaparser.ast.expr.Expression;
+import com.github.javaparser.ast.expr.LambdaExpr;
 import com.github.javaparser.ast.stmt.*;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
+import com.github.javaparser.resolution.UnsolvedSymbolException;
 import com.github.javaparser.resolution.declarations.ResolvedReferenceTypeDeclaration;
 import com.github.javaparser.resolution.types.ResolvedType;
 import com.github.javaparser.resolution.types.parametrization.ResolvedTypeParametersMap;
@@ -25,7 +27,7 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
             FlowNode tempSource = new FlowNode(source);
             Set<FlowEdge> edgeSet = g.outgoingEdgesOf(tempSource);
             if (edgeSet.size() != 1) {
-                throw new IllegalStateException("Somehow we ended up visiting the node " + source + " that had " +
+                throw new UnsupportedOperationException("Somehow we ended up visiting the node " + source + " that had " +
                         edgeSet.size() + " outgoing edges instead of 1. Here's the graph:\n" + g);
             }
             this.edge = edgeSet.stream().findFirst().get();
@@ -88,7 +90,7 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
         g.addVertex(mdNode);
         g.addEdge(callNode, mdNode);
         if (methodDeclaration.getBody().isEmpty()) {
-            throw new IllegalStateException("The Method Declaration should never be empty");
+            throw new UnsupportedOperationException("The Method Declaration should never be empty");
         }
         FlowNode methodBody = new FlowNode(methodDeclaration.getBody().get());
         g.addVertex(methodBody);
@@ -109,7 +111,12 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
         FlowNode body = new FlowNode(forEachStmt.getBody());
         g.addVertex(body);
         // We're dealing with an array and should represent it with an indexed for loop
-        ResolvedType iterableType = forEachStmt.getIterable().calculateResolvedType();
+        ResolvedType iterableType = null;
+        try {
+            iterableType = forEachStmt.getIterable().calculateResolvedType();
+        } catch (UnsolvedSymbolException ignored) {
+            throw new UnsupportedOperationException("Foreach loops are only supported if their types can be resolved to something known");
+        }
         Optional<ResolvedReferenceTypeDeclaration> itType = Optional.empty();
         if (iterableType.isReferenceType()) {
             itType = forEachStmt.getIterable().calculateResolvedType().asReferenceType().getTypeDeclaration();
@@ -155,7 +162,7 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
             ResolvedTypeParametersMap itTypeParams = iterableType.asReferenceType().typeParametersMap();
 
             if (itTypeParams.getTypes().size() != 1) {
-                throw new IllegalStateException("An iterable with more than one type was given: " + itTypeParams);
+                throw new UnsupportedOperationException("An iterable with more than one type was given: " + itTypeParams);
             }
 
             FlowNode iteratorInit = new FlowNode(StaticJavaParser.parseStatement("Iterator<" +
@@ -448,7 +455,7 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
         if (continueStmt.getLabel().isPresent()) {
             ancestor = NodeUtils.getLabeledAncestor(g, edge.getSource(), continueStmt.getLabel().get().asString());
             if (ancestor.getNode().isPresent() && ancestor.getNode().get() instanceof IfStmt) {
-                throw new IllegalStateException("Tried to continue to a labeled if statement");
+                throw new UnsupportedOperationException("Tried to continue to a labeled if statement");
             }
         } else {
             ancestor = NodeUtils.getNearestContinuableAncestor(g, edge.getSource());
@@ -571,5 +578,10 @@ public class AstToGraphConverter extends VoidVisitorAdapter<Graph<FlowNode, Flow
     @Override
     public void visit(ThrowStmt throwStmt, Graph<FlowNode, FlowEdge> g) {
         throw new UnsupportedOperationException("Throw statements are not yet supported");
+    }
+
+    @Override
+    public void visit(LambdaExpr lambdaExpr, Graph<FlowNode, FlowEdge> g) {
+        throw new UnsupportedOperationException("Lambda Expressions are not yet supported");
     }
 }

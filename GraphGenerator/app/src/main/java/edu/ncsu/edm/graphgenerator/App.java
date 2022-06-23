@@ -21,6 +21,7 @@ import org.jgrapht.nio.dot.DOTExporter;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -101,7 +102,8 @@ public class App {
         try {
             condExprToIfConverter.rewriteAllCondExprsToIf(md);
             md.accept(astToGraphConverter, graph);
-        } catch (UnsupportedOperationException e) {
+        } catch (Exception e) {
+            System.err.println(e);
             return null;
         }
 
@@ -516,9 +518,8 @@ public class App {
         private final List<String[]> nodeLines;
         private final List<String[]> edgeLines;
 
-        AtomicInteger numGraphs = new AtomicInteger(0);
-        AtomicInteger numCodeStates = new AtomicInteger(0);
-        AtomicInteger totalCodeStates = new AtomicInteger(0);
+        private final AtomicInteger numGraphs = new AtomicInteger(0);
+        private final AtomicInteger numCodeStates = new AtomicInteger(0);
 
         public CanonicalizationStrategy(String strategy) throws IOException {
             this(strategy, null);
@@ -636,22 +637,23 @@ public class App {
         }
 
         public boolean write(String codeStateId, Stream<Graph<FlowNode, FlowEdge>> graphs) {
-            boolean allWritten = true;
+            AtomicBoolean allWritten = new AtomicBoolean(true);
             AtomicInteger currentCodeStateCountedMethods = new AtomicInteger(0);
-            for (CanonicalizationStrategy strategy : this.strategies) {
-                try {
-                    currentCodeStateCountedMethods.set(0);
-                    graphs.forEach(
-                            g -> {
-                                strategy.addLinesForGraph(codeStateId, g, currentCodeStateCountedMethods);
-                            }
-                    );
-                    strategy.writeLines();
-                } catch (Exception e) {
-                    allWritten = false;
+            graphs.forEach(
+                g -> {
+                    for (CanonicalizationStrategy strategy : this.strategies) {
+                        try {
+                            currentCodeStateCountedMethods.set(0);
+                            strategy.addLinesForGraph(codeStateId, g, currentCodeStateCountedMethods);
+                            strategy.writeLines();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            allWritten.set(false);
+                        }
+                    }
                 }
-            }
-            return allWritten;
+            );
+            return allWritten.get();
         }
     }
 
@@ -667,9 +669,9 @@ public class App {
                         n.accept(LITERAL_CANONICALIZATION_CONVERTER, null);
                     })));
             CanonicalizationStrategyCollection strategies = new CanonicalizationStrategyCollection(
-                    fullCanonicalization,
+                    noCanonicalization,
                     partialCanonicalization,
-                    noCanonicalization
+                    fullCanonicalization
             );
             try {
                 paths.map(File::new).flatMap(App::createGraphs).forEach(p -> strategies.write(p.getValue0(), p.getValue1()));

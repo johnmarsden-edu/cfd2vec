@@ -28,7 +28,7 @@ public class NodeUtils {
             seenEdges.addAll(graph.incomingEdgesOf(ancestor));
         }
 
-        throw new IllegalStateException("You asked for ancestor from a graph that didn't have an ancestor that " +
+        throw new UnsupportedOperationException("You asked for ancestor from a graph that didn't have an ancestor that " +
                 "met this condition: " + condString);
 
     }
@@ -72,7 +72,7 @@ public class NodeUtils {
             }
         }
 
-        throw new IllegalStateException("You asked for ancestor from a graph that didn't have an ancestor that " +
+        throw new UnsupportedOperationException("You asked for ancestor from a graph that didn't have an ancestor that " +
                 "met this condition: Has a name that starts with 'after'");
     }
 }
