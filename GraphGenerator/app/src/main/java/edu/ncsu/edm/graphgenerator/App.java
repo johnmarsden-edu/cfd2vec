@@ -5,7 +5,6 @@ import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.expr.ConditionalExpr;
 import com.github.javaparser.printer.configuration.DefaultPrinterConfiguration;
 import com.github.javaparser.symbolsolver.JavaSymbolSolver;
 import com.github.javaparser.symbolsolver.model.resolution.TypeSolver;
@@ -23,6 +22,7 @@ import org.jgrapht.nio.dot.DOTExporter;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -91,28 +91,20 @@ public class App {
     }
 
 
-    static final CanonicalizationConverter canonicalizationConverter = new CanonicalizationConverter();
-    static final FindStaticNamesVisitor findStaticNamesVisitor = new FindStaticNamesVisitor();
+    static final VariableCanonicalizationConverter VARIABLE_CANONICALIZATION_CONVERTER = new VariableCanonicalizationConverter();
+    static final LiteralCanonicalizationConverter LITERAL_CANONICALIZATION_CONVERTER = new LiteralCanonicalizationConverter();
     static final AstToGraphConverter astToGraphConverter = new AstToGraphConverter();
     static final CondExprToIfConverter condExprToIfConverter = new CondExprToIfConverter();
-    static final Set<String> staticNames = new HashSet<>();
 
     private static Graph<FlowNode, FlowEdge> createGraph(MethodDeclaration md) {
         Graph<FlowNode, FlowEdge> graph = new DefaultDirectedGraph<>(FlowEdge.class);
         try {
-            staticNames.clear();
             condExprToIfConverter.rewriteAllCondExprsToIf(md);
             md.accept(astToGraphConverter, graph);
-            md.accept(findStaticNamesVisitor, staticNames);
-            graph.vertexSet().forEach(fn -> fn.getNode().ifPresent(n -> {
-                n.accept(canonicalizationConverter, staticNames);
-            }));
         } catch (UnsupportedOperationException e) {
             return null;
-        } catch (Exception e) {
-            System.err.println(md);
-            throw e;
         }
+
         return new AsUnmodifiableGraph<>(graph);
     }
 
@@ -158,7 +150,6 @@ public class App {
         try {
             return new CsvToBeanBuilder<CodeState>(new FileReader(new File(codeStatesDir, "CodeStates.csv")))
                     .withType(CodeState.class).build().stream()
-                    .filter(cs -> validCodeStateIds.contains(cs.getCodeStateId()))
                     .filter(cs -> !cs.getCode().isBlank())
                     .map(cs -> Pair.with(cs.getCodeStateId(), parseMethod(cs)))
                     .filter(p -> Objects.nonNull(p.getValue0()));
@@ -516,73 +507,174 @@ public class App {
         }
     }
 
-    public static void generateGraphs(Stream<String> paths) {
-        try {
-            FileWriter nodeFile = new FileWriter("Nodes.csv");
+    private static class CanonicalizationStrategy {
+        private final CSVWriter nodes;
+        private final CSVWriter edges;
+        private final CSVWriter stats;
+        private final Consumer<Graph<FlowNode, FlowEdge>> canonicalizer;
+
+        private final List<String[]> nodeLines;
+        private final List<String[]> edgeLines;
+
+        AtomicInteger numGraphs = new AtomicInteger(0);
+        AtomicInteger numCodeStates = new AtomicInteger(0);
+        AtomicInteger totalCodeStates = new AtomicInteger(0);
+
+        public CanonicalizationStrategy(String strategy) throws IOException {
+            this(strategy, null);
+        }
+
+        public CanonicalizationStrategy(String strategy, Consumer<Graph<FlowNode, FlowEdge>> canonicalizer) throws IOException {String nodeName = strategy + "Nodes.csv";
+            String edgeName = strategy + "Edges.csv";
+            String statName = strategy + "Stats.csv";
+
+
+            FileWriter nodeFile = null;
+            try {
+                nodeFile = new FileWriter(nodeName);
+            } catch (IOException ignored) {
+                throw new RuntimeException("Couldn't create " + nodeName);
+            }
             CSVWriter nodeCsv = new CSVWriter(nodeFile);
             nodeCsv.writeNext(new String[] { "CodeStateId", "MethodNum", "NodeId", "NodeData" });
 
-            FileWriter edgeFile = new FileWriter("Edges.csv");
+            FileWriter edgeFile = null;
+            try {
+                edgeFile = new FileWriter(edgeName);
+            } catch (IOException e) {
+                nodeFile.close();
+                throw new RuntimeException("Couldn't create " + edgeName);
+            }
             CSVWriter edgeCsv = new CSVWriter(edgeFile);
             edgeCsv.writeNext(new String[] { "CodeStateId", "MethodNum", "Node1Id", "Node2Id", "EdgeData" });
 
-            FileWriter statsFile = new FileWriter("Stats.csv");
+            FileWriter statsFile = null;
+            try {
+                statsFile = new FileWriter(statName);
+            } catch (IOException e) {
+                nodeFile.close();
+                edgeFile.close();
+                throw new RuntimeException("Couldn't create " + statName);
+            }
             CSVWriter statsCsv = new CSVWriter(statsFile);
             statsCsv.writeNext(new String[] { "Number of Graphs", "Number of CodeStates", "Number of Methods with ConditionalExpr"});
+            this.nodes = nodeCsv;
+            this.edges = edgeCsv;
+            this.stats = statsCsv;
+            this.canonicalizer = canonicalizer;
+            this.nodeLines = new ArrayList<>();
+            this.edgeLines = new ArrayList<>();
+        }
 
-            AtomicInteger numGraphs = new AtomicInteger(0);
-            AtomicInteger numCodeStates = new AtomicInteger(0);
-            AtomicInteger totalMethodsFound = new AtomicInteger(0);
-            try {
-                paths.map(File::new).flatMap(App::createGraphs).forEach(
-                        p -> {
-                            List<String[]> nodeLines = new ArrayList<>();
-                            List<String[]> edgeLines = new ArrayList<>();
-                            AtomicInteger numMethods = new AtomicInteger(0);
-                            p.getValue1().forEach(
-                                    g -> {
-                                        if (numMethods.get() == 0) {
-                                            numCodeStates.incrementAndGet();
-                                        }
-                                        String nm = Integer.toString(numMethods.incrementAndGet());
-                                        numGraphs.incrementAndGet();
-                                        int id = 0;
-                                        Map<FlowNode, String> nodeIds = new HashMap<>();
-                                        for (FlowNode n: g.vertexSet()) {
-                                            String idStr = String.valueOf(id);
-                                            nodeIds.put(n, idStr);
-                                            nodeLines.add(new String[]{
-                                                    p.getValue0(),
-                                                    nm,
-                                                    idStr,
-                                                    n.toString()
-                                            });
-                                            id += 1;
-                                        }
+        public void close() throws IOException {
+            stats.writeNext(new String[] { numGraphs.toString(), numCodeStates.toString(), CondExprToIfConverter.numberOfMethodsWithCondExpr.toString() });
+            stats.close();
+            nodes.close();
+            edges.close();
+        }
 
-                                        for (FlowEdge e: g.edgeSet()) {
-                                            String incomingId = nodeIds.get(g.getEdgeSource(e));
-                                            String outgoingId = nodeIds.get(g.getEdgeTarget(e));
-                                            edgeLines.add(new String[]{
-                                                    p.getValue0(),
-                                                    nm,
-                                                    incomingId,
-                                                    outgoingId,
-                                                    e.toString()
-                                            });
-                                        }
-                                    }
-                            );
-                            nodeCsv.writeAll(nodeLines);
-                            edgeCsv.writeAll(edgeLines);
-                        }
-                );
+        public void addLinesForGraph(String codeStateId,
+                                     Graph<FlowNode, FlowEdge> g,
+                                     AtomicInteger currentCodeStateCountedMethods) {
+
+            if (this.canonicalizer != null) {
+                this.canonicalizer.accept(g);
             }
-            finally {
-                statsCsv.writeNext(new String[] { numGraphs.toString(), numCodeStates.toString(), CondExprToIfConverter.numberOfMethodsWithCondExpr.toString() });
-                statsCsv.close();
-                nodeCsv.close();
-                edgeCsv.close();
+
+            if (currentCodeStateCountedMethods.get() == 0) {
+                this.numCodeStates.incrementAndGet();
+            }
+
+            String nm = Integer.toString(currentCodeStateCountedMethods.incrementAndGet());
+            this.numGraphs.incrementAndGet();
+            Map<FlowNode, String> nodeIds = new HashMap<>();
+            int id = 0;
+            for (FlowNode n: g.vertexSet()) {
+                String idStr = String.valueOf(id);
+                nodeIds.put(n, idStr);
+                this.nodeLines.add(new String[]{
+                        codeStateId,
+                        nm,
+                        idStr,
+                        n.toString()
+                });
+                id += 1;
+            }
+
+            for (FlowEdge e: g.edgeSet()) {
+                String incomingId = nodeIds.get(g.getEdgeSource(e));
+                String outgoingId = nodeIds.get(g.getEdgeTarget(e));
+                this.edgeLines.add(new String[]{
+                        codeStateId,
+                        nm,
+                        incomingId,
+                        outgoingId,
+                        e.toString()
+                });
+            }
+        }
+
+        public void writeLines() {
+            this.nodes.writeAll(this.nodeLines);
+            this.edges.writeAll(this.edgeLines);
+            this.nodeLines.clear();
+            this.edgeLines.clear();
+        }
+    }
+
+    private record CanonicalizationStrategyCollection(CanonicalizationStrategy... strategies) {
+        public boolean close() {
+            boolean allClosed = true;
+            for (CanonicalizationStrategy strategy : this.strategies) {
+                try {
+                    strategy.close();
+                } catch (IOException e) {
+                    allClosed = false;
+                }
+            }
+            return allClosed;
+        }
+
+        public boolean write(String codeStateId, Stream<Graph<FlowNode, FlowEdge>> graphs) {
+            boolean allWritten = true;
+            AtomicInteger currentCodeStateCountedMethods = new AtomicInteger(0);
+            for (CanonicalizationStrategy strategy : this.strategies) {
+                try {
+                    currentCodeStateCountedMethods.set(0);
+                    graphs.forEach(
+                            g -> {
+                                strategy.addLinesForGraph(codeStateId, g, currentCodeStateCountedMethods);
+                            }
+                    );
+                    strategy.writeLines();
+                } catch (Exception e) {
+                    allWritten = false;
+                }
+            }
+            return allWritten;
+        }
+    }
+
+    public static void generateGraphs(Stream<String> paths) {
+        try {
+            CanonicalizationStrategy noCanonicalization = new CanonicalizationStrategy("noneCanonicalization");
+            CanonicalizationStrategy partialCanonicalization = new CanonicalizationStrategy("partCanonicalization",
+                    g -> g.vertexSet().forEach(fn -> fn.getNode().ifPresent(n -> {
+                        n.accept(VARIABLE_CANONICALIZATION_CONVERTER, null);
+                    })));
+            CanonicalizationStrategy fullCanonicalization = new CanonicalizationStrategy("fullCanonicalization",
+                    g -> g.vertexSet().forEach(fn -> fn.getNode().ifPresent(n -> {
+                        n.accept(LITERAL_CANONICALIZATION_CONVERTER, null);
+                    })));
+            CanonicalizationStrategyCollection strategies = new CanonicalizationStrategyCollection(
+                    fullCanonicalization,
+                    partialCanonicalization,
+                    noCanonicalization
+            );
+            try {
+                paths.map(File::new).flatMap(App::createGraphs).forEach(p -> strategies.write(p.getValue0(), p.getValue1()));
+            } finally {
+                strategies.close();
             }
         } catch (IOException e) {
             e.printStackTrace();
