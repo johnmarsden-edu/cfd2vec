@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import networkx as nx
 import pandas as pd
@@ -36,7 +37,10 @@ def get_models(strategy, graph):
 def train_models(strategy: str, embed_size: int):
   node_file_name = f'{strategy}Nodes.csv'
   edge_file_name = f'{strategy}Edges.csv'
-  graph_dir = Path.cwd() / 'data' / 'Graphs'
+  data_dir = Path.cwd() / 'data'
+  graph_dir = data_dir / 'Graphs'
+  vector_dir = data_dir / 'Vectors'
+  vector_dir.mkdir(parents=True, exist_ok=True)
   nodes = pd.read_csv(graph_dir / node_file_name)
   edges = pd.read_csv(graph_dir / edge_file_name)
   graph = load_graphs(nodes, edges)
@@ -53,13 +57,13 @@ def train_models(strategy: str, embed_size: int):
         embed_data.append(np.array(embeddings[row.NodeData]))
         code_id = row.CodeStateId
         ids.append(code_id)
-      else:
+      elif row.NodeData in embeddings:
         embed_data[-1] += embeddings[row.NodeData]
     for i in range(len(embed_data)):
       embed_data[i] = embed_data[i] / np.linalg.norm(embed_data[i])
     out_csv = pd.DataFrame(embed_data)
     out_csv['CodeStateID'] = ids
-    out_csv.to_csv(os.path.join('data', 'Vectors', filename), index=False)
+    out_csv.to_csv(vector_dir / filename, index=False)
  
 def main():
   EMBED_SIZE = 50
