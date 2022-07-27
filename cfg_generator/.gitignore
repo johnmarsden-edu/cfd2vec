@@ -1,0 +1,4 @@
+second_fuzz_outputs/
+fuzz_outputs/
+fuzz_inputs/
+network_fuzz_outputs/

@@ -1,20 +1,6 @@
-[package]
-name = "cfg_generator"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [workspace]
 members = [
-    "fuzz"
+    "fuzz",
+    "cfg_generator",
+    "read_afl_crashes"
 ]
-
-[dependencies]
-bytes = "1.0.0"
-serde = { version="1.0", features=["derive"]}
-async-std = "1.12.0"
-async-listen = "0.2.1"
-rmp-serde = "1.1.0"
-tokio = "1.19.2"
-tokio-util = { version="0.7.3", features=["codec"]}
