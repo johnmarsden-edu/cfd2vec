@@ -4,7 +4,7 @@ extern crate afl;
 extern crate cfg_generator;
 
 use bytes::BytesMut;
-use cfg_generator::messages::message::Message;
+use cfg_generator::capnp::message::Message;
 use log::debug;
 use log::trace;
 use std::borrow::Borrow;
@@ -13,20 +13,18 @@ use std::io;
 fn main() -> io::Result<()> {
     simple_logging::log_to_file("fuzzing.log", log::LevelFilter::Debug)?;
 
-    fuzz!(|message: Message| {
+    fuzz!(|message: &[u8]| {
         trace!("Fuzzing using following message: {:?}", message);
 
-        if let Ok(data) = serde_json::to_vec(&message) {
-            if data.len() <= u32::MAX as usize {
-                let data: &[u8] = data.borrow();
-                let bites: BytesMut = BytesMut::from(data);
-                match cfg_generator::server::process_decoded_item(bites) {
-                    Ok(()) => {
-                        trace!("Successfully fuzzed using the above message");
-                    }
-                    Err(e) => {
-                        debug!("Error {:?} during fuzzing of message: {:#?}", e, message);
-                    }
+        if data.len() <= u32::MAX as usize {
+            let data: &[u8] = data.borrow();
+            let bites: BytesMut = BytesMut::from(data);
+            match cfg_generator::server::process_decoded_item(bites) {
+                Ok(()) => {
+                    trace!("Successfully fuzzed using the above message");
+                }
+                Err(e) => {
+                    debug!("Error {:?} during fuzzing of message: {:#?}", e, message);
                 }
             }
         }

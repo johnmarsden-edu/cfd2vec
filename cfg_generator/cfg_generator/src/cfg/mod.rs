@@ -5,26 +5,27 @@ mod decisions;
 mod errors;
 
 pub use cfg_node::{CfgEdge, CfgNode};
+use error_chain::bail;
 pub use errors::MethodProcessingError;
 
 use crate::cfg::ast_processor::AstProcessor;
-use crate::messages::ast_node::*;
+pub use crate::cfg::ast_processor::Error;
+pub use crate::cfg::ast_processor::Result;
 
 use petgraph::stable_graph::StableDiGraph;
-use std::borrow::Borrow;
 
 pub fn process_method(
-    nodes: &[AstNode],
-    method_id: usize,
-) -> Result<StableDiGraph<CfgNode, CfgEdge>, MethodProcessingError> {
-    if nodes.is_empty() {
-        Err(MethodProcessingError::EmptyNodeArray)
+    nodes: capnp::struct_list::Reader<crate::capnp::message_capnp::ast_node::Owned>,
+    method_id: u32,
+) -> Result<StableDiGraph<CfgNode, CfgEdge>> {
+    if nodes.len() == 0 {
+        bail!(MethodProcessingError::EmptyNodeArray)
     } else if method_id >= nodes.len() {
-        Err(MethodProcessingError::InvalidMethodId(
+        bail!(MethodProcessingError::InvalidMethodId(
             method_id as u32,
             nodes.len() as u32,
         ))
     } else {
-        AstProcessor::process_method(nodes, method_id, nodes[method_id].borrow())
+        AstProcessor::process_method(nodes, method_id, nodes.get(method_id))
     }
 }

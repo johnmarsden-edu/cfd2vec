@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Error;
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)

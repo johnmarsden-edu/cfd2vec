@@ -3,7 +3,7 @@ extern crate afl;
 extern crate cfg_generator;
 
 use arbitrary::Unstructured;
-use cfg_generator::messages::message::Message;
+use cfg_generator::capnp::message::Message;
 use error_chain::error_chain;
 use std::borrow::Borrow;
 use std::fs::read;

@@ -1,6 +1,6 @@
 #[derive(Debug)]
 pub struct CfgNode<'a> {
-    pub label: Option<&'a String>,
+    pub label: Option<&'a str>,
     pub node_type: CfgNodeType<'a>,
 }
 
@@ -13,12 +13,12 @@ pub enum ControlNodeType {
 }
 #[derive(Debug)]
 pub enum CfgNodeType<'a> {
-    Source { name: Option<&'a String> },
-    Sink { name: Option<&'a String> },
-    Statement { statement: &'a String },
+    Source { name: Option<&'a str> },
+    Sink { name: Option<&'a str> },
+    Statement { statement: &'a str },
     ControlNode(ControlNodeType),
-    Decision { decision: &'a String },
-    Exception { statement: &'a String },
+    Decision { decision: &'a str },
+    Exception { statement: &'a str },
     Label,
 }
 

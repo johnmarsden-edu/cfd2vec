@@ -20,6 +20,4 @@ pub enum MethodProcessingError {
     ProcessingNodeTwice,
     #[error("You passed in an empty node array which can't be used to generate a graph")]
     EmptyNodeArray,
-    #[error("You passed in a node array which can't be used to generate a graph as it contains more nodes than can be represented with the list of IDs")]
-    OverfullNodeArray,
 }

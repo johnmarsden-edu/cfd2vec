@@ -3,18 +3,20 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
 )]
 pub enum Decision {
-    And(u32, u32),
-    Or(u32, u32),
+    And { left: u32, right: u32 },
+    Or { left: u32, right: u32 },
     Unit(String),
     Empty,
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
@@ -30,6 +32,7 @@ pub struct FunctionBlock {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
@@ -46,6 +49,7 @@ pub struct LoopBlock {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
@@ -59,6 +63,7 @@ pub struct DecisionBlock {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
@@ -72,6 +77,7 @@ pub struct TryBlock {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
@@ -85,6 +91,7 @@ pub struct CatchBlock {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
@@ -98,6 +105,7 @@ pub struct ThrowStatement {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
@@ -110,6 +118,7 @@ pub struct Stmt {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
@@ -122,6 +131,7 @@ pub struct YieldStatement {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
@@ -133,6 +143,7 @@ pub struct Break {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
@@ -144,6 +155,7 @@ pub struct Continue {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
@@ -155,6 +167,7 @@ pub struct Return {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
@@ -165,16 +178,8 @@ pub struct Goto {
     pub node: Node,
 }
 
-#[cfg_attr(
-    feature = "arbitrary",
-    derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
-)]
-pub enum Exits {
-    Yes,
-    No,
-}
-
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
@@ -196,6 +201,7 @@ pub enum AstNodeContents {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)

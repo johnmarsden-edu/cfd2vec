@@ -2,6 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
@@ -9,6 +10,7 @@ use serde::{Deserialize, Serialize};
 pub struct Node {}
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)
@@ -20,6 +22,7 @@ pub struct Block {
 }
 
 #[derive(Serialize, Deserialize, JsonSchema)]
+#[serde(tag = "type")]
 #[cfg_attr(
     feature = "arbitrary",
     derive(arbitrary::Arbitrary, Debug, Eq, PartialEq)

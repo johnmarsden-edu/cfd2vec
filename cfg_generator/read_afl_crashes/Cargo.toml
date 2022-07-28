@@ -12,4 +12,3 @@ error-chain = "0.12.4"
 
 [dependencies.cfg_generator]
 path = "../cfg_generator"
-features = ["arbitrary"]

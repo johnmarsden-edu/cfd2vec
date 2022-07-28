@@ -30,4 +30,3 @@ futures = "0.3.21"
 
 [dependencies.cfg_generator]
 path = "../cfg_generator"
-features = ["arbitrary"]
