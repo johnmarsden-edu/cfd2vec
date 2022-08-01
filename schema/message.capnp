@@ -1,4 +1,10 @@
 @0xdd79c8698f4cded1;
+using Java = import "/capnp/java.capnp";
+$Java.package("edu.ncsu.lab.cfg_gen.api");
+$Java.outerClassname("CfgGenerator");
+
+using Rust = import "/capnp/rust.capnp";
+$Rust.parentModule("capnp");
 
 struct Message {
     nodes @0 :List(AstNode);

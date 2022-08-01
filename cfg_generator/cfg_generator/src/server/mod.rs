@@ -2,10 +2,9 @@
 
 use crate::capnp::readers::message;
 use crate::cfg::{CfgEdge, CfgNode, MethodProcessingError};
-use bytes::{Buf, Bytes, BytesMut};
+use bytes::{Buf, BytesMut};
 use capnp::message::TypedReader;
 use error_chain::error_chain;
-use futures::SinkExt;
 use log::{debug, info};
 use petgraph::dot::Dot;
 use petgraph::stable_graph::StableDiGraph;
@@ -45,7 +44,6 @@ async fn connection_loop(mut stream: TcpStream) -> Result<()> {
     let peer_addr = stream.peer_addr()?;
     println!("Connected from {}", peer_addr);
     let mut frames = Framed::new(&mut stream, LengthDelimitedCodec::new());
-    frames.send(Bytes::from("hello\n".as_bytes())).await?;
     while let Some(result) = frames.next().await {
         match result {
             Ok(decoded_item) => {

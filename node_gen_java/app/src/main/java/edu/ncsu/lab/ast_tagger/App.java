@@ -1,4 +1,4 @@
-package edu.ncsu.edm.graphgenerator;
+package edu.ncsu.lab.ast_tagger;
 
 import com.github.javaparser.ParseProblemException;
 import com.github.javaparser.ParserConfiguration;

@@ -1,5 +1,4 @@
 [package]
-build = "build.rs"
 name = "cfg_generator"
 version = "0.1.0"
 edition = "2021"
