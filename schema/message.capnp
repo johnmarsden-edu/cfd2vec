@@ -7,13 +7,16 @@ using Rust = import "/capnp/rust.capnp";
 $Rust.parentModule("capnp");
 
 struct Message {
-    nodes @0 :List(AstNode);
-    methods @1 :List(UInt32);
-    programId @2 :Text;
+    methods @0 :List(AstNode);
+    programId @1 :Text;
+    debug :union {
+        some @2 :Text;
+        none @3 :Void;
+    }
 }
 
 struct Block {
-    statements @0 :List(UInt32);
+    statements @0 :List(AstNode);
 }
 
 struct Statement {
@@ -23,12 +26,12 @@ struct Statement {
 struct Condition {
     union {
         and :group {
-            left @0 :UInt32;
-            right @1 :UInt32;
+            left @0 :Condition;
+            right @1 :Condition;
         }
         or :group {
-            left @2 :UInt32;
-            right @3 :UInt32;
+            left @2 :Condition;
+            right @3 :Condition;
         }
         unit @4 :Text;
         empty @5 :Void;
@@ -41,6 +44,8 @@ struct AstNode {
         some @1 :Text;
         none @2 :Void;
     }
+    breakable @18 :Bool;
+    lambdaFunctions @17 :List(FunctionBlock);
     contents :union {
         functionBlock @3 :FunctionBlock;
         loopBlock @4 :LoopBlock;
@@ -55,6 +60,7 @@ struct AstNode {
         returnStatement @13 :ReturnStatement;
         condition @14 :Condition;
         gotoStatement @15 :GotoStatement;
+        block @16 :Block;
     }
 }
 
@@ -99,12 +105,20 @@ struct CatchBlock {
 
 struct TryBlock {
     block @0 :Block;
-    catches @1 :List(UInt32);
+    catches @1 :List(CatchBlock);
+    finally :union {
+        some @2 :Block;
+        none @3 :Void;
+    }
 }
 
 struct DecisionBlock {
     condition @0 :Condition;
     block @1 :Block;
+    else :union {
+        some @2 :AstNode;
+        none @3 :Void;
+    }
 }
 
 struct LoopBlock {

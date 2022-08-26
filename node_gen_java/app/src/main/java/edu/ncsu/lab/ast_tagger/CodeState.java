@@ -28,9 +28,9 @@ public class CodeState {
         this.imports = imports;
     }
 
-    public String getCodeStateId() { 
-        return this.codeStateId; 
-    };
+    public String getCodeStateId() {
+        return this.codeStateId;
+    }
 
     public String getCode() {
         return this.code;

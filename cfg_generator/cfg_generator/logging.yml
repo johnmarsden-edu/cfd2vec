@@ -1,0 +1,14 @@
+appenders:
+  stdout:
+    kind: console
+    encoder:
+      pattern: "{d} - [{h({l})}] (({t})) {m} (({M}, {f}, {L})){n}"
+
+root:
+  level: info
+  appenders:
+    - stdout
+
+loggers:
+  cfg_generator:
+    level: debug

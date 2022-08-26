@@ -37,22 +37,14 @@ dependencies {
 
 application {
     // Define the main class for the application.
-    mainClass = 'edu.ncsu.edm.graphgenerator.App'
+    mainClass = 'edu.ncsu.lab.ast_tagger.App'
     run {
-        jvmArgs += '--enable-preview -Xlint:unchecked'
+        jvmArgs += '--enable-preview'
         ignoreExitValue = true
         workingDir = file("..")
     }
 }
 
 tasks.withType(JavaCompile) {
-    options.compilerArgs << '--enable-preview' << '-Xlint:unchecked'
-}
-tasks.withType(Test) {
-    jvmArgs += "--enable-preview"
-}
-
-tasks.named('test') {
-    // Use JUnit Platform for unit tests.
-    useJUnitPlatform()
+    options.compilerArgs << '--enable-preview'
 }

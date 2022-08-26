@@ -11,18 +11,24 @@ import org.javatuples.Pair;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
+@SuppressWarnings("unchecked")
 public class CondExprToIfConverter {
-    static AtomicInteger numberOfMethodsWithCondExpr = new AtomicInteger(0);
+    static final AtomicInteger numberOfMethodsWithCondExpr = new AtomicInteger(0);
+
     public void rewriteAllCondExprsToIf(Node node) {
         Optional<ConditionalExpr> condExpr = node.findFirst(ConditionalExpr.class);
-        if (condExpr.isPresent()) numberOfMethodsWithCondExpr.incrementAndGet();
+        if (condExpr.isPresent()) {
+            numberOfMethodsWithCondExpr.incrementAndGet();
+        }
         while (condExpr.isPresent()) {
             this.rewriteCondExprToIf(condExpr.get());
             condExpr = node.findFirst(ConditionalExpr.class);
         }
     }
+
     public void rewriteCondExprToIf(ConditionalExpr conditionalExpr) {
-        Optional<? extends Statement> parentStatement = conditionalExpr.findAncestor(Statement.class);
+        Optional<? extends Statement> parentStatement =
+                conditionalExpr.findAncestor(Statement.class);
         if (parentStatement.isPresent()) {
             Statement parent = parentStatement.get();
             // System.out.println(parent);
@@ -40,28 +46,25 @@ public class CondExprToIfConverter {
         }
     }
 
-    private void rewriteExpressionStatement(ConditionalExpr conditionalExpr, Statement parent, ExpressionStmt e, Expression expr) {
+    private void rewriteExpressionStatement(ConditionalExpr conditionalExpr, Statement parent,
+                                            ExpressionStmt e, Expression expr) {
         Pair<Statement, Statement> parentAndStatement = Pair.with(parent, e);
         if (expr instanceof VariableDeclarationExpr varDecExpr) {
-            // System.out.println("Extracted Declaration");
             parentAndStatement = extractConditionalDeclaration(conditionalExpr, parent, varDecExpr);
-            // System.out.println(parentAndStatement.getValue0());
-            // System.out.println(parentAndStatement.getValue1());
         }
 
         // If expr is a condExpr, convert parent into a block statement containing an if
         // else
-        if (expr instanceof ConditionalExpr condExpr && e.getParentNode().isPresent() &&
-                (e.getParentNode().get() instanceof SwitchEntry || e.getParentNode().get() instanceof LambdaExpr)) {
-            // System.out.println("Rewrote a switch or Lambda");
+        if (expr instanceof ConditionalExpr condExpr && e.getParentNode()
+                                                         .isPresent() && (
+                    e.getParentNode()
+                     .get() instanceof SwitchEntry || e.getParentNode()
+                                                       .get() instanceof LambdaExpr
+            )) {
             rewriteSwitchOrLambda(e, condExpr);
         } else {
-            // System.out.println("Rewrite Conditional as If Statement");
             rewriteCondAsIfElse(conditionalExpr, parentAndStatement.getValue1());
-            // System.out.println(conditionalExpr);
-            // System.out.println(parentAndStatement.getValue1());
         }
-//        throw new RuntimeException("Stop execution fast");
     }
 
     private void rewriteCondAsIfElse(ConditionalExpr conditionalExpr, Statement originalStatement) {
@@ -76,28 +79,34 @@ public class CondExprToIfConverter {
         CloneVisitor cloner = new CloneVisitor();
         Statement trueClone = (Statement) originalStatement.accept(cloner, null);
         Statement falseClone = (Statement) originalStatement.accept(cloner, null);
-        ConditionalExpr tcCondExpr = trueClone.findFirst(ConditionalExpr.class, (c) -> c.toString().equals(conditionalExpr.toString())).orElseThrow();
-        ConditionalExpr fcCondExpr = falseClone.findFirst(ConditionalExpr.class, (c) -> c.toString().equals(conditionalExpr.toString())).orElseThrow();
+        ConditionalExpr tcCondExpr = trueClone.findFirst(ConditionalExpr.class, (c) -> c.toString()
+                                                                                        .equals(conditionalExpr.toString()))
+                                              .orElseThrow();
+        ConditionalExpr fcCondExpr = falseClone.findFirst(ConditionalExpr.class, (c) -> c.toString()
+                                                                                         .equals(conditionalExpr.toString()))
+                                               .orElseThrow();
         tcCondExpr.replace(tcCondExpr.getThenExpr());
-        // System.out.println(trueClone);
         fcCondExpr.replace(fcCondExpr.getElseExpr());
-        // System.out.println(falseClone);
 
         IfStmt ifStmt = new IfStmt(conditionalExpr.getCondition(), trueClone, falseClone);
 
-        Node parent = originalStatement.getParentNode().orElseThrow();
-        // System.out.println(parent);
+        originalStatement.getParentNode()
+                         .orElseThrow();
         originalStatement.replace(ifStmt);
-        // System.out.println(parent);
     }
 
     private Pair<Statement, Statement> extractConditionalDeclaration(ConditionalExpr conditionalExpr, Statement parent, VariableDeclarationExpr varDecExpr) {
         Statement newParent = null;
         Statement newStatement = null;
-        if (parent.getParentNode().isPresent() && parent.getParentNode().get() instanceof BlockStmt blockStmt) {
-            int parentIndex = blockStmt.getStatements().indexOf(parent);
+        if (parent.getParentNode()
+                  .isPresent() && parent.getParentNode()
+                                        .get() instanceof BlockStmt blockStmt) {
+            int parentIndex = blockStmt.getStatements()
+                                       .indexOf(parent);
 
-            VariableDeclarator condDeclarator = conditionalExpr.findAncestor(VariableDeclarator.class).orElseThrow();
+            VariableDeclarator condDeclarator =
+                    conditionalExpr.findAncestor(VariableDeclarator.class)
+                                                               .orElseThrow();
             NodeList<VariableDeclarator> irrelevantVariables = new NodeList<>();
             for (VariableDeclarator var : varDecExpr.getVariables()) {
                 if (var != condDeclarator) {
@@ -105,30 +114,23 @@ public class CondExprToIfConverter {
                 }
             }
 
-            ExpressionStmt irrelevantDeclaration = new ExpressionStmt(
-                    new VariableDeclarationExpr(irrelevantVariables)
-            );
+            ExpressionStmt irrelevantDeclaration =
+                    new ExpressionStmt(new VariableDeclarationExpr(irrelevantVariables));
 
-            ExpressionStmt declaration = new ExpressionStmt(
-                    new VariableDeclarationExpr(
-                            new VariableDeclarator(
-                                    condDeclarator.getType(),
-                                    condDeclarator.getName()
-                            )
-                    )
-            );
+            ExpressionStmt declaration =
+                    new ExpressionStmt(new VariableDeclarationExpr(new VariableDeclarator(condDeclarator.getType(), condDeclarator.getName())));
 
-            ExpressionStmt assignment = new ExpressionStmt(
-                    new AssignExpr(
-                            condDeclarator.getNameAsExpression(),
-                            condDeclarator.getInitializer().orElseThrow(),
-                            AssignExpr.Operator.ASSIGN
-                    )
-            );
+            ExpressionStmt assignment =
+                    new ExpressionStmt(new AssignExpr(condDeclarator.getNameAsExpression(),
+                            condDeclarator.getInitializer()
+                                                                                                                              .orElseThrow(), AssignExpr.Operator.ASSIGN));
 
             blockStmt.addStatement(parentIndex, assignment);
             blockStmt.addStatement(parentIndex, declaration);
-            if (irrelevantDeclaration.getExpression().asVariableDeclarationExpr().getVariables().isNonEmpty()) {
+            if (irrelevantDeclaration.getExpression()
+                                     .asVariableDeclarationExpr()
+                                     .getVariables()
+                                     .isNonEmpty()) {
                 blockStmt.addStatement(parentIndex, irrelevantDeclaration);
                 newParent = irrelevantDeclaration;
             } else {
@@ -147,11 +149,15 @@ public class CondExprToIfConverter {
         IfStmt ifStmt = new IfStmt().setCondition(condExpr.getCondition());
         BlockStmt blockStmt = new BlockStmt(new NodeList<>(ifStmt));
 
-        if (e.getParentNode().isPresent() && e.getParentNode().get() instanceof SwitchEntry switchEntry) {
+        if (e.getParentNode()
+             .isPresent() && e.getParentNode()
+                              .get() instanceof SwitchEntry switchEntry) {
             ifStmt.setThenStmt(new YieldStmt(condExpr.getThenExpr()))
                   .setElseStmt(new YieldStmt(condExpr.getElseExpr()));
             switchEntry.setStatements(new NodeList<>(blockStmt));
-        } else if (e.getParentNode().isPresent() && e.getParentNode().get() instanceof LambdaExpr lambdaExpr) {
+        } else if (e.getParentNode()
+                    .isPresent() && e.getParentNode()
+                                     .get() instanceof LambdaExpr lambdaExpr) {
             ifStmt.setThenStmt(new ReturnStmt(condExpr.getThenExpr()))
                   .setElseStmt(new ReturnStmt(condExpr.getElseExpr()));
             lambdaExpr.setBody(blockStmt);

@@ -6,6 +6,6 @@ pub(in crate::cfg) enum ProcessedBlock {
     Statement(NodeIndex),
     Boundaries {
         start_node: NodeIndex,
-        end_node: NodeIndex,
+        _end_node: NodeIndex,
     },
 }

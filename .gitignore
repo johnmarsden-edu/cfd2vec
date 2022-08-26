@@ -153,6 +153,8 @@ gradle-app.setting
 
 data
 
+cfg_generator/cfg_generator/fuzzing_corpus
+schema/codegen
 .vscode
 **/.idea
 vectors.zip
