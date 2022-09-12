@@ -1,63 +1,45 @@
 #![deny(missing_doc_code_examples)]
 
-use crate::capnp::message_capnp::message::debug::WhichReader;
-use crate::capnp::readers::message;
-use crate::cfg::cfg_node::{Direction, NodeType};
-use crate::cfg::{Edge, MethodProcessingError, Node};
-use crate::db::cornucopia;
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::time;
+use std::time::{Duration, Instant};
+
 use bytes::{Buf, BytesMut};
 use capnp::message::TypedReader;
 use deadpool_postgres::{Manager, ManagerConfig, Pool, RecyclingMethod};
 use dotenvy::dotenv;
 use futures::stream::FuturesOrdered;
-use futures::{pin_mut, StreamExt};
 use itertools::Itertools;
-use log::{debug, error, info, trace};
+use log::{error, info, trace};
 use once_cell::sync::Lazy;
 use petgraph::dot::Dot;
 use petgraph::prelude::EdgeRef;
 use petgraph::stable_graph::{NodeIndex, StableDiGraph};
 use petgraph::visit::{IntoEdgeReferences, IntoNodeReferences};
-use std::borrow::Borrow;
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::time;
+use stream_cancel::Valve;
 use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::mpsc;
+use tokio::sync::mpsc::Sender;
 use tokio::task;
-use tokio_postgres::binary_copy::BinaryCopyInWriter;
 use tokio_postgres::types::{ToSql, Type};
-use tokio_postgres::{Client, NoTls, Transaction};
-use tokio_stream::wrappers::TcpListenerStream;
+use tokio_postgres::{Client, NoTls};
+use tokio_stream::wrappers::{ReceiverStream, TcpListenerStream};
+use tokio_stream::StreamExt;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 
-#[derive(thiserror::Error, Debug)]
-pub enum CfgServerError {
-    #[error("There was an error setting up the TCP socket: {error}")]
-    TcpServer {
-        #[from]
-        error: std::io::Error,
-    },
-    #[error("There was an error running dotenv: {error}")]
-    DotEnv {
-        #[from]
-        error: dotenvy::Error,
-    },
-    #[error("There was an error configuring the database connection: {error}")]
-    Config {
-        #[from]
-        error: config::ConfigError,
-    },
-    #[error("There was an error creating the database connection pool: {error}")]
-    CreatePool {
-        #[from]
-        error: deadpool_postgres::CreatePoolError,
-    },
-    #[error("There was an error building the database pool: {error}")]
-    BuildPool {
-        #[from]
-        error: deadpool_postgres::BuildError,
-    },
-}
+use crate::capnp::message_capnp::message::debug::WhichReader;
+use crate::capnp::readers::message;
+use crate::cfg::cfg_node::{ControlType, Direction, NodeType};
+use crate::cfg::{Edge, Node};
+use crate::db::{cornucopia, store_values};
+use crate::server::error::{CfgServerError, ConnectionError, MessageProcessingError};
+use crate::server::message_processing::{
+    ProcessedEdge, ProcessedGraph, ProcessedNode, ProcessedProgram,
+};
+
+pub mod error;
+pub mod message_processing;
 
 pub async fn start(collect_mode: bool) -> Result<(), CfgServerError> {
     dotenv()?;
@@ -72,44 +54,73 @@ pub async fn start(collect_mode: bool) -> Result<(), CfgServerError> {
 
     const TCP_CONNECTION: &str = "::0:9271";
     let bound_listener = TcpListener::bind(TCP_CONNECTION).await?;
-    info!(
-        "Accepting connections on {:?}",
-        bound_listener.local_addr()?
-    );
+    let address = bound_listener.local_addr()?;
+    info!("Accepting connections on {:?}", address);
+    let listener = TcpListenerStream::new(bound_listener);
+
+    let (trigger, valve) = Valve::new();
+    let (db_sender, db_receiver) = mpsc::channel::<ProcessedProgram>(4000);
+    let mut db_stream = ReceiverStream::new(db_receiver);
+    let timeout = Duration::new(5, 0);
+    let batch_size = 10000;
+    let db_task = task::spawn(async move {
+        let mut timeout_start = Instant::now();
+        let mut batch = Vec::new();
+        let mut batches_processing = FuturesOrdered::default();
+        while let Some(program) = db_stream.next().await {
+            batch.push(program);
+            let time_passed = Instant::now() - timeout_start;
+            if batch.len() >= batch_size || time_passed > timeout {
+                info!("Took {:#?} to fill up the batch", time_passed);
+                timeout_start = Instant::now();
+                let batch = batch
+                    .drain(..)
+                    .filter(|p| !p.graphs.is_empty())
+                    .collect_vec();
+                let mut conn = pool.get().await?;
+                batches_processing.push_back(task::spawn(async move {
+                    if let Err(e) = store_programs(&mut conn, batch).await {
+                        error!("An error occurred while storing the program: {}", e);
+                    }
+                }));
+            }
+        }
+
+        while batches_processing.next().await.is_some() {}
+        Result::<(), CfgServerError>::Ok(())
+    });
 
     let mut connections = FuturesOrdered::default();
-    let mut listener = TcpListenerStream::new(bound_listener);
-    while let Some(Ok(stream)) = listener.next().await {
-        let pool = pool.clone();
+    let mut incoming = valve.wrap(listener);
+    let mut trigger = Some(trigger);
+    ctrlc::set_handler(move || {
+        if let Some(trigger) = trigger.take() {
+            trigger.cancel();
+        }
+    })?;
+
+    while let Some(Ok(stream)) = incoming.next().await {
+        let sender = db_sender.clone();
         connections.push_back(task::spawn(async move {
-            if let Err(e) = connection_loop(stream, collect_mode, pool).await {
+            if let Err(e) = connection_loop(stream, collect_mode, sender).await {
                 error!("Error during connection loop: {:?}", e);
             }
         }));
     }
 
-    while connections.next().await.is_some() {}
+    info!("Start disconnecting");
+    while connections.next().await.is_some() {
+        info!("Disconnected");
+    }
+    drop(db_sender);
+    db_task.await.unwrap().unwrap();
     Ok(())
-}
-
-#[derive(thiserror::Error, Debug)]
-pub enum ConnectionError {
-    #[error("There was an error during the TCP connection: {error}")]
-    TcpConnectionError {
-        #[from]
-        error: std::io::Error,
-    },
-    #[error("There was an error getting a database connection: {error}")]
-    DatabasePoolConnectError {
-        #[from]
-        error: deadpool_postgres::PoolError,
-    },
 }
 
 async fn connection_loop(
     mut stream: TcpStream,
     collect_mode: bool,
-    pool: Pool,
+    db_sender: Sender<ProcessedProgram>,
 ) -> Result<(), ConnectionError> {
     let peer_addr = stream.peer_addr()?;
     info!("Connected from {}", peer_addr);
@@ -119,13 +130,13 @@ async fn connection_loop(
         match result {
             Ok(decoded_item) => {
                 trace!("Decoded item: {:?}", decoded_item);
-                let pool = pool.clone();
+                let sender = db_sender.clone();
                 message_processors.push_back(task::spawn(async move {
                     let decoded_item = decoded_item;
                     match process_decoded_item(decoded_item, collect_mode) {
                         Ok(program) => {
-                            let mut db_conn = pool.get().await?;
-                            store_program(&mut db_conn, program).await?
+                            trace!("Starting to store the program");
+                            sender.send(program).await?;
                         }
                         Err(e) => error!("Error during processing of decoded item: {}", e),
                     }
@@ -154,48 +165,6 @@ async fn connection_loop(
     Ok(())
 }
 
-#[derive(thiserror::Error, Debug)]
-pub enum MessageProcessingError {
-    #[error("Error processing program {program_id} message: {error}\n\nStarted with the following code: {code}")]
-    MethodProcessingDebug {
-        program_id: String,
-        error: MethodProcessingError,
-        code: String,
-    },
-    #[error("Error processing program {program_id} message: {error}")]
-    MethodProcessing {
-        program_id: String,
-        error: MethodProcessingError,
-    },
-    #[error("Error during cap'n proto reading: {error}")]
-    CapnProto {
-        #[from]
-        error: capnp::Error,
-    },
-    #[error("Error during cap'n proto reading not in schema: {error}")]
-    CapnProtoNotInSchema {
-        #[from]
-        error: capnp::NotInSchema,
-    },
-    #[error("Error while performing IO: {error}")]
-    Io {
-        #[from]
-        error: std::io::Error,
-    },
-    #[error("Error while running database queries: {error}")]
-    Database {
-        #[from]
-        error: tokio_postgres::Error,
-    },
-    #[error("Error while trying to create a file for a graph in the message")]
-    GraphCreation,
-    #[error("There was an error getting a database connection from the pool: {error}")]
-    Pool {
-        #[from]
-        error: deadpool_postgres::PoolError,
-    },
-}
-
 static _GRAPH_DIR: Lazy<PathBuf> = Lazy::new(|| {
     let graph_dir = PathBuf::from("graphs");
     std::fs::create_dir_all(graph_dir.clone()).expect("Could not create the graph directory");
@@ -206,32 +175,6 @@ static FUZZ_DIR: Lazy<PathBuf> = Lazy::new(|| {
     std::fs::create_dir_all(fuzz_dir.clone()).expect("Could not create the fuzzing directory");
     fuzz_dir
 });
-
-pub struct ProcessedNode {
-    pub node_index: NodeIndex,
-    pub label: Option<String>,
-    pub node_type: cornucopia::types::public::NodeType,
-    pub contents: Option<String>,
-}
-
-pub struct ProcessedEdge {
-    pub source: NodeIndex,
-    pub target: NodeIndex,
-    pub edge_type: cornucopia::types::public::EdgeType,
-    pub direction: Option<bool>,
-    pub exception: Option<String>,
-}
-
-pub struct ProcessedGraph {
-    pub graph_id: String,
-    pub nodes: Vec<ProcessedNode>,
-    pub edges: Vec<ProcessedEdge>,
-}
-
-pub struct ProcessedProgram {
-    pub program_id: String,
-    pub graphs: Vec<ProcessedGraph>,
-}
 
 pub fn process_decoded_item(
     msg: BytesMut,
@@ -267,7 +210,7 @@ pub fn process_decoded_item(
         graphs: Vec::new(),
     };
 
-    match process_message(&message_root) {
+    match message_processing::process_message(&message_root) {
         Ok(graphs) => {
             for (id, graph) in graphs {
                 let graph_id = if let Some(i) = id {
@@ -284,11 +227,6 @@ pub fn process_decoded_item(
                 };
 
                 trace!("graph_id: {:#?}", graph_id);
-                // debug!("graphs_dir: {:#?}", program_dir);
-                // let graph_file = program_dir.join(format!("{}.dot", graph_id));
-                // debug!("graph_file: {:#?}", graph_file);
-                // let contents = format!("{}", Dot::new(&graph));
-                // write(graph_file, contents)?;
                 program
                     .graphs
                     .push(process_graph(graph, graph_id, &program.program_id)?);
@@ -296,7 +234,7 @@ pub fn process_decoded_item(
             Ok(program)
         }
         Err(e) => {
-            debug!("Error during method processing");
+            error!("Error during method processing");
             match message_root.get_debug().which()? {
                 WhichReader::Some(code) => Err(MessageProcessingError::MethodProcessingDebug {
                     program_id: program.program_id,
@@ -344,14 +282,27 @@ fn process_nodes(
                 cornucopia::types::public::NodeType::Statement,
                 Some(statement.to_string()),
             ),
-            NodeType::ControlNode(_) => (cornucopia::types::public::NodeType::Control, None),
+            NodeType::ControlNode {
+                control_type,
+                contents,
+            } => (
+                cornucopia::types::public::NodeType::Control,
+                match control_type {
+                    ControlType::Return(term) => contents.map(|content| format!("{} {}", term, content)),
+                    ControlType::Break(term)
+                    | ControlType::_Yield(term)
+                    | ControlType::Continue(term) => {
+                        node.label.map(|label| format!("{} {}", term, label))
+                    }
+                },
+            ),
             NodeType::Decision { decision } => (
                 cornucopia::types::public::NodeType::Decision,
                 Some(decision.to_string()),
             ),
-            NodeType::Exception { statement } => (
+            NodeType::Exception { term, statement } => (
                 cornucopia::types::public::NodeType::Exception,
-                Some(statement.to_string()),
+                Some(format!("{} {}", term, statement)),
             ),
             NodeType::Label => {
                 error!(
@@ -366,7 +317,11 @@ fn process_nodes(
         };
         nodes.push(ProcessedNode {
             node_index,
-            label: node.label.map(|label| label.to_string()),
+            label: if let NodeType::ControlNode { .. } = node.node_type {
+                None
+            } else {
+                node.label.map(|label| label.to_string())
+            },
             node_type,
             contents,
         });
@@ -417,68 +372,80 @@ fn process_edges(
     Ok(edges)
 }
 
-async fn store_values<'a>(
-    transaction: &Transaction<'a>,
-    table: String,
-    columns: String,
-    types: &'a [Type],
-    values: &'a [&'a [&'a (dyn ToSql + Sync)]],
-) -> Result<Vec<i32>, MessageProcessingError> {
-    let copy_sink = transaction
-        .copy_in(&format!(
-            "COPY {table}_temp ({columns}) FROM STDIN (FORMAT binary)"
-        ))
-        .await?;
-
-    let writer = BinaryCopyInWriter::new(copy_sink, types);
-    pin_mut!(writer);
-    for value in values {
-        writer.as_mut().write(value).await?;
-    }
-    writer.finish().await?;
-
-    let ids: Vec<i32> = transaction
-        .query(
-            &format!(
-                "INSERT INTO {table} ({columns}) SELECT {columns} FROM {table}_temp RETURNING id"
-            ),
-            &[],
-        )
-        .await?
-        .into_iter()
-        .map(|row| row.get(0))
-        .collect();
-    Ok(ids)
-}
-
-async fn store_program(
+async fn store_programs(
     db_conn: &mut Client,
-    program: ProcessedProgram,
+    programs: Vec<ProcessedProgram>,
 ) -> Result<(), MessageProcessingError> {
-    let program_id = cornucopia::queries::program::insert_program()
-        .bind(db_conn, &program.program_id.borrow())
-        .one()
-        .await
-        .map(|program| program.id)?;
-
+    trace!("Start transaction");
     let transaction = db_conn.transaction().await?;
 
+    trace!("Create temporary tables");
     transaction
         .execute(
-            &"CREATE TEMP TABLE graphs_temp (LIKE graphs INCLUDING ALL) ON COMMIT DROP;
-                CREATE TEMP TABLE edges_temp (LIKE edges INCLUDING ALL) ON COMMIT DROP;
-                CREATE TEMP TABLE nodes_temp (LIKE nodes INCLUDING ALL) ON COMMIT DROP;"
+            &"CREATE TEMP TABLE programs_temp (LIKE programs INCLUDING ALL) ON COMMIT DROP"
                 .to_string(),
             &[],
         )
         .await?;
+    transaction
+        .execute(
+            &"CREATE TEMP TABLE graphs_temp (LIKE graphs INCLUDING ALL) ON COMMIT DROP".to_string(),
+            &[],
+        )
+        .await?;
+    transaction
+        .execute(
+            &"CREATE TEMP TABLE edges_temp (LIKE edges INCLUDING ALL) ON COMMIT DROP".to_string(),
+            &[],
+        )
+        .await?;
+    transaction
+        .execute(
+            &"CREATE TEMP TABLE nodes_temp (LIKE nodes INCLUDING ALL) ON COMMIT DROP".to_string(),
+            &[],
+        )
+        .await?;
 
-    let graph_insert_types = &[Type::VARCHAR, Type::INT4];
-    let graph_data: Vec<Vec<&(dyn ToSql + Sync)>> = program
-        .graphs
+    let program_insert_types = &[Type::VARCHAR];
+    let program_data: Vec<Vec<&(dyn ToSql + Sync)>> = programs
         .iter()
-        .map(|graph| vec![&graph.graph_id as &(dyn ToSql + Sync), &program_id])
+        .map(|program| vec![&program.program_id as &(dyn ToSql + Sync)])
         .collect();
+    let program_ids = store_values(
+        &transaction,
+        "programs".to_string(),
+        "program_id".to_string(),
+        program_insert_types,
+        program_data
+            .iter()
+            .map(|e| e.as_slice())
+            .collect_vec()
+            .as_slice(),
+    )
+    .await?;
+    let graph_insert_types = &[Type::VARCHAR, Type::INT4];
+    let graph_data_store: Vec<(&String, i32)> = programs
+        .iter()
+        .zip(program_ids)
+        .flat_map(|(program, program_id)| {
+            let program_id = &program_id;
+            program
+                .graphs
+                .iter()
+                .map(|graph| (&graph.graph_id, *program_id))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+
+    let graph_data: Vec<[&(dyn ToSql + Sync); 2]> = graph_data_store
+        .iter()
+        .map(|(graph_id, program_id)| [*graph_id as &(dyn ToSql + Sync), program_id])
+        .collect();
+
+    trace!(
+        "Inserting graph info - Number of graphs: {}",
+        graph_data.len()
+    );
     let graph_ids = store_values(
         &transaction,
         "graphs".to_string(),
@@ -492,10 +459,36 @@ async fn store_program(
     )
     .await?;
 
-    let node_types = &[Type::VARCHAR, Type::ANYENUM, Type::VARCHAR, Type::INT4];
-    let node_data: Vec<Vec<&(dyn ToSql + Sync)>> = program
-        .graphs
+    let get_enum_oid_stmt = transaction
+        .prepare(
+            "SELECT pg_type.typname, pg_type.oid, string_agg(pg_enum.enumlabel, '|')
+                    FROM pg_enum
+                    JOIN pg_type
+                      ON (pg_enum.enumtypid = pg_type.oid)
+                    WHERE typname = $1
+                    GROUP BY pg_type.typname, pg_type.oid",
+        )
+        .await?;
+
+    trace!("Getting node_type_info");
+    let node_type_info = transaction
+        .query_one(&get_enum_oid_stmt, &[&"node_type"])
+        .await?;
+    let variants = node_type_info
+        .get::<usize, String>(2)
+        .split('|')
+        .map(|s| s.to_string())
+        .collect_vec();
+    let node_type = Type::new(
+        node_type_info.get(0),
+        node_type_info.get(1),
+        postgres_types::Kind::Enum(variants),
+        "public".to_string(),
+    );
+    let node_types = &[Type::VARCHAR, node_type, Type::VARCHAR, Type::INT4];
+    let node_data: Vec<Vec<&(dyn ToSql + Sync)>> = programs
         .iter()
+        .flat_map(|program| program.graphs.iter())
         .zip(graph_ids.iter())
         .flat_map(|(graph, graph_id)| {
             graph.nodes.iter().map(|node| {
@@ -509,6 +502,10 @@ async fn store_program(
         })
         .collect();
 
+    trace!(
+        "Inserting nodes for graph - Number of nodes: {}",
+        node_data.len()
+    );
     let node_ids = store_values(
         &transaction,
         "nodes".to_string(),
@@ -522,30 +519,46 @@ async fn store_program(
     )
     .await?;
 
-    let node_ids: HashMap<NodeIndex, i32> = program
-        .graphs
+    let node_ids: HashMap<(NodeIndex, i32), i32> = programs
         .iter()
-        .flat_map(|graph| graph.nodes.iter())
+        .flat_map(|program| program.graphs.iter())
+        .zip(graph_ids.iter())
+        .flat_map(|(graph, graph_id)| graph.nodes.iter().map(|node| (node, *graph_id)))
         .zip(node_ids)
-        .map(|(node, id)| (node.node_index, id))
+        .map(|((node, graph_id), id)| ((node.node_index, graph_id), id))
         .collect();
 
+    trace!("Getting edge_type_info");
+    let edge_type_info = transaction
+        .query_one(&get_enum_oid_stmt, &[&"edge_type"])
+        .await?;
+    let variants = edge_type_info
+        .get::<usize, String>(2)
+        .split('|')
+        .map(|s| s.to_string())
+        .collect_vec();
+    let edge_type = Type::new(
+        edge_type_info.get(0),
+        edge_type_info.get(1),
+        postgres_types::Kind::Enum(variants),
+        "public".to_string(),
+    );
     let edge_types = &[
         Type::INT4,
         Type::INT4,
         Type::INT4,
-        Type::ANYENUM,
+        edge_type,
         Type::BOOL,
         Type::VARCHAR,
     ];
-    let edge_data: Vec<Vec<&(dyn ToSql + Sync)>> = program
-        .graphs
+    let edge_data: Vec<Vec<&(dyn ToSql + Sync)>> = programs
         .iter()
+        .flat_map(|program| program.graphs.iter())
         .zip(graph_ids.iter())
         .flat_map(|(graph, graph_id)| {
             graph.edges.iter().map(|edge| {
-                let source = node_ids.get(&edge.source).unwrap();
-                let target = node_ids.get(&edge.target).unwrap();
+                let source = node_ids.get(&(edge.source, *graph_id)).unwrap();
+                let target = node_ids.get(&(edge.target, *graph_id)).unwrap();
 
                 vec![
                     graph_id as &(dyn ToSql + Sync),
@@ -559,7 +572,11 @@ async fn store_program(
         })
         .collect();
 
-    let _ = store_values(
+    trace!(
+        "Inserting edges for graph - Number of edges: {}",
+        edge_data.len()
+    );
+    store_values(
         &transaction,
         "edges".to_string(),
         "graph_id, source, target, edge_type, direction, exception".to_string(),
@@ -574,18 +591,4 @@ async fn store_program(
 
     transaction.commit().await?;
     Ok(())
-}
-
-type MessageProcessingResult<'a> =
-    Result<Vec<(Option<String>, StableDiGraph<Node<'a>, Edge<'a>>)>, MethodProcessingError>;
-
-fn process_message<'a>(message: &message::Reader<'a>) -> MessageProcessingResult<'a> {
-    let mut graphs = Vec::new();
-    for node in message.get_methods()? {
-        match crate::cfg::process_method(node) {
-            Ok(processed) => graphs.push(processed),
-            Err(e) => Err(e)?,
-        }
-    }
-    Ok(graphs)
 }

@@ -163,5 +163,6 @@ Edges.csv
 Stats.csv
 *.dot
 *.png
+analysis/save*
 
 .~lock*

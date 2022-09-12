@@ -4,6 +4,7 @@ import com.github.javaparser.ParseProblemException;
 import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
+import com.github.javaparser.ast.visitor.CloneVisitor;
 import com.github.javaparser.printer.configuration.DefaultPrinterConfiguration;
 import com.github.javaparser.symbolsolver.JavaSymbolSolver;
 import com.github.javaparser.symbolsolver.model.resolution.TypeSolver;
@@ -88,20 +89,36 @@ public class App {
         }
     }
 
-
-    static final VariableCanonicalizerVisitor VARIABLE_CANONICALIZATION_CONVERTER =
-            new VariableCanonicalizerVisitor();
-    static final LiteralCanonicalizerVisitor LITERAL_CANONICALIZATION_CONVERTER =
-            new LiteralCanonicalizerVisitor();
     static final CondExprToIfConverter condExprToIfConverter = new CondExprToIfConverter();
+    static final CloneVisitor cloner = new CloneVisitor();
 
-    private static void createGraph(ServerConnection connection, Canonicalizer canonicalizer,
+    private static void createCanonicalizedGraphs(ServerConnection connection, List<Pair<String,
+            List<CanonicalizerVisitor>>> canonicalizers, CompilationUnit compilationUnit,
+                                                  String programId, boolean debugMode) {
+        try {
+            condExprToIfConverter.rewriteAllCondExprsToIf(compilationUnit);
+            var clone = (CompilationUnit) cloner.visit(compilationUnit, null);
+            for (var stratCanPair : canonicalizers) {
+                createGraph(connection, stratCanPair.getValue1(), clone,
+                            stratCanPair.getValue0() + "-" + programId, debugMode
+                );
+            }
+        } catch (Exception e) {
+            System.err.println("Error in " + programId);
+            e.printStackTrace();
+        }
+    }
+
+    private static void createGraph(ServerConnection connection,
+                                    List<CanonicalizerVisitor> canonicalizers,
                                     CompilationUnit compilationUnit, String programId,
                                     boolean debugMode) {
         try /* (var program = new FileOutputStream(programId)) */ {
-            condExprToIfConverter.rewriteAllCondExprsToIf(compilationUnit);
-            var message = new AstTagger(canonicalizer).buildTaggedAstMessage(compilationUnit,
-                                                                             programId, debugMode
+            for (var visitor : canonicalizers) {
+                compilationUnit.accept(visitor, null);
+            }
+            var message = new AstTagger().buildTaggedAstMessage(compilationUnit, programId,
+                                                                debugMode
             );
             //            org.capnproto.Serialize.write(program.getChannel(), message);
             connection.send(message);
@@ -121,15 +138,14 @@ public class App {
         return Pair.with(dataDir, codeStatesDir);
     }
 
-    private static void createGraphs(ServerConnection connection, Canonicalizer canonicalizer,
-                                     File dataDir, boolean debugMode) {
+    private static void createGraphs(ServerConnection connection, File dataDir, boolean debugMode) {
         Pair<File, File> dirs = getVerifiedFolders(dataDir);
 
         var programStream = getPrograms(dirs.getValue0(), dirs.getValue1());
 
         programStream.ifPresent(pairStream -> pairStream.forEach(
-                p -> createGraph(connection, canonicalizer, p.getValue1(), p.getValue0(),
-                                 debugMode
+                p -> createCanonicalizedGraphs(connection, getCanonicalizers(), p.getValue1(),
+                                               p.getValue0(), debugMode
                 )));
     }
 
@@ -562,6 +578,39 @@ public class App {
                                   return count;
                               }
                               """);
+        put("emptyIfStatement", """
+                                public int roundSum(int a, int b, int c)
+                                {
+                                    int A = round10(a);
+                                    int B = round10(b);
+                                    int C = round10(c);
+                                    return A + B + C;
+                                }
+                                                                
+                                public int round10(int num)
+                                {
+                                    if (num < 10 && num < 5)
+                                    {
+                                        return 0;
+                                    }
+                                    else if (num <= 10 && num > 5)
+                                    {
+                                        return 10;
+                                    }
+                                    
+                                    String number = "num";
+                                    int rightMost = number.charAt(number.length());
+                                    
+                                    if (rightMost >= 5)
+                                    {
+                                        
+                                    }  
+                                    
+                                    //int result = Integer.parseInt(leftNum);
+                                    return 0;
+                                }
+                                """);
+
     }};
 
     private static final Map<String, List<String>> testImports = new HashMap<>() {{
@@ -578,12 +627,16 @@ public class App {
         }
     }
 
-    private static final List<Pair<String, Canonicalizer>> CANONICALIZERS = new ArrayList<>() {{
-        add(Pair.with("NC", new Canonicalizer.None()));
-        //        add(Pair.with("VC", new Canonicalizer.Variable()));
-        //        add(Pair.with("LC", new Canonicalizer.Literal()));
-        //        add(Pair.with("FC", new Canonicalizer.Full()));
-    }};
+    private static List<Pair<String, List<CanonicalizerVisitor>>> getCanonicalizers() {
+        return new ArrayList<>() {{
+            add(Pair.with("NC", List.of()));
+            add(Pair.with("VC", List.of(new VariableCanonicalizerVisitor())));
+            add(Pair.with("LC", List.of(new LiteralCanonicalizerVisitor())));
+            add(Pair.with("FC", List.of(new VariableCanonicalizerVisitor(),
+                                        new LiteralCanonicalizerVisitor()
+            )));
+        }};
+    }
 
     public static void generateTestGraphs(ServerConnection connection, String feature) {
         CodeState first = new CodeState("Test", testMethods.get(feature));
@@ -597,27 +650,19 @@ public class App {
         System.out.println("==============================================");
         CompilationUnit second = App.parseCode(first).orElseThrow();
         System.out.println(second);
-        for (var canonicalizer : CANONICALIZERS) {
-            App.createGraph(connection, canonicalizer.getValue1(), second,
-                            canonicalizer.getValue0() + "-" + feature, true
-            );
-        }
+        App.createCanonicalizedGraphs(connection, getCanonicalizers(), second, feature, true);
         System.out.println("==============================================\n\n");
 
     }
 
     public static void generateGraphs(Stream<String> paths, boolean debugMode) {
-        paths
-                .map(File::new)
-                .map(f -> {
-                    try {
-                        return Pair.with(f, new ServerConnection(HOSTNAME, PORT));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                })
-                .forEach(p -> CANONICALIZERS.forEach(
-                        c -> createGraphs(p.getValue1(), c.getValue1(), p.getValue0(), debugMode)));
+        paths.map(File::new).map(f -> {
+            try {
+                return Pair.with(f, new ServerConnection(HOSTNAME, PORT));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }).forEach(p -> createGraphs(p.getValue1(), p.getValue0(), debugMode));
     }
 
     private static void testCondConverter() {
@@ -672,6 +717,7 @@ public class App {
                 .getConfiguration()
                 .setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_17_PREVIEW)
                 .setSymbolResolver(symbolSolver)
+                .setDoNotAssignCommentsPrecedingEmptyLines(true)
                 .setAttributeComments(false);
     }
 }

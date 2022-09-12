@@ -16,21 +16,35 @@ impl<'a> Display for Node<'a> {
 }
 
 #[derive(Debug)]
-pub enum ControlType {
-    Break,
-    _Yield,
-    Return,
-    Continue,
+pub enum ControlType<'a> {
+    Break(&'a str),
+    _Yield(&'a str),
+    Return(&'a str),
+    Continue(&'a str),
 }
 
 #[derive(Debug)]
 pub enum NodeType<'a> {
-    Source { name: Option<&'a str> },
-    Sink { name: Option<&'a str> },
-    Statement { statement: &'a str },
-    ControlNode(ControlType),
-    Decision { decision: &'a str },
-    Exception { statement: &'a str },
+    Source {
+        name: Option<&'a str>,
+    },
+    Sink {
+        name: Option<&'a str>,
+    },
+    Statement {
+        statement: &'a str,
+    },
+    ControlNode {
+        control_type: ControlType<'a>,
+        contents: Option<&'a str>,
+    },
+    Decision {
+        decision: &'a str,
+    },
+    Exception {
+        term: &'a str,
+        statement: &'a str,
+    },
     Label,
 }
 
@@ -46,11 +60,16 @@ impl<'a> Display for NodeType<'a> {
                 None => write!(f, "Anonymous Sink"),
             },
             NodeType::Statement { statement } => write!(f, "statement: {}", statement),
-            NodeType::ControlNode(control_node_type) => {
-                write!(f, "control node: {:?}", control_node_type)
+            NodeType::ControlNode {
+                control_type,
+                contents,
+            } => {
+                write!(f, "control node: {:?} {:?}", control_type, contents)
             }
             NodeType::Decision { decision } => write!(f, "decision: {}", decision),
-            NodeType::Exception { statement } => write!(f, "throws: {}", statement),
+            NodeType::Exception { term, statement } => {
+                write!(f, "throws using {}: {}", term, statement)
+            }
             NodeType::Label => write!(f, "Dummy Label Node"),
         }
     }

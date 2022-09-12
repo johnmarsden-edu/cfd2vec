@@ -113,11 +113,11 @@ impl<'a> AstProcessor<'a> {
 
         let current = &self.method_graph[current_node];
         match &current.node_type {
-            NodeType::ControlNode(control_type) => {
+            NodeType::ControlNode { control_type, .. } => {
                 if let Some(label) = current.label {
                     if let Some(label_node) = labels.get(label) {
                         match control_type {
-                            ControlType::Break => {
+                            ControlType::Break(_) => {
                                 let break_edge = self
                                     .method_graph
                                     .edges(*label_node)
@@ -126,11 +126,11 @@ impl<'a> AstProcessor<'a> {
                                     self.add_statement_edge(current_node, target);
                                 }
                             }
-                            ControlType::_Yield => Err(LabelProcessingError::NotImplemented(
+                            ControlType::_Yield(_) => Err(LabelProcessingError::NotImplemented(
                                 "Yield statement is not yet implemented".to_string(),
                             ))?,
-                            ControlType::Return => Err(LabelProcessingError::ReturnToLabel)?,
-                            ControlType::Continue => {
+                            ControlType::Return(_) => Err(LabelProcessingError::ReturnToLabel)?,
+                            ControlType::Continue(_) => {
                                 let continue_edge = self
                                     .method_graph
                                     .edges(*label_node)
@@ -288,18 +288,29 @@ impl<'a> AstProcessor<'a> {
         nodes
     }
 
-    fn add_exception_node(&mut self, stmt: &'a str) -> NodeIndex {
+    fn add_exception_node(&mut self, term: &'a str, stmt: &'a str) -> NodeIndex {
         self.method_graph.add_node(Node {
             label: None,
-            node_type: NodeType::Exception { statement: stmt },
+            node_type: NodeType::Exception {
+                term,
+                statement: stmt,
+            },
         })
     }
 
     /// Add a statement node with the given statement to the graph
-    fn add_control_node(&mut self, label: Option<&'a str>, node_type: ControlType) -> NodeIndex {
+    fn add_control_node(
+        &mut self,
+        label: Option<&'a str>,
+        contents: Option<&'a str>,
+        node_type: ControlType<'a>,
+    ) -> NodeIndex {
         self.method_graph.add_node(Node {
             label,
-            node_type: NodeType::ControlNode(node_type),
+            node_type: NodeType::ControlNode {
+                control_type: node_type,
+                contents,
+            },
         })
     }
 
@@ -914,7 +925,10 @@ impl<'a> AstProcessor<'a> {
                     throw_statement.get_exception()?.get(0)?,
                 )))?;
 
-            let source_node = self.add_exception_node(throw_statement.get_statement()?);
+            let source_node = self.add_exception_node(
+                throw_statement.get_term()?,
+                throw_statement.get_statement()?,
+            );
 
             self.add_exception_edge(source_node, target_node, conveying_exception);
 
@@ -951,7 +965,8 @@ impl<'a> AstProcessor<'a> {
             break_statement::label::Some(label) => Some(label?),
             break_statement::label::None(()) => None,
         };
-        let source = self.add_control_node(label, ControlType::Break);
+        let source =
+            self.add_control_node(label, None, ControlType::Break(break_statement.get_term()?));
         match (label, ctx.nearest_breakable_node) {
             (None, Some(target)) => {
                 self.add_statement_edge(source, target);
@@ -970,7 +985,11 @@ impl<'a> AstProcessor<'a> {
             continue_statement::label::Some(label) => Some(label?),
             continue_statement::label::None(()) => None,
         };
-        let source = self.add_control_node(label, ControlType::Continue);
+        let source = self.add_control_node(
+            label,
+            None,
+            ControlType::Continue(continue_statement.get_term()?),
+        );
         match (label, ctx.nearest_continuable_node) {
             (None, Some(target)) => {
                 self.add_statement_edge(source, target);
@@ -989,7 +1008,11 @@ impl<'a> AstProcessor<'a> {
             return_statement::expression::Some(expr) => Some(expr?),
             return_statement::expression::None(()) => None,
         };
-        let source = self.add_control_node(expression, ControlType::Return);
+        let source = self.add_control_node(
+            None,
+            expression,
+            ControlType::Return(return_statement.get_term()?),
+        );
         match ctx.sink_node {
             Some(target) => {
                 self.add_statement_edge(source, target);

@@ -2,7 +2,7 @@ appenders:
   stdout:
     kind: console
     encoder:
-      pattern: "{d} - [{h({l})}] (({t})) {m} (({M}, {f}, {L})){n}"
+      pattern: "{d} - [{i}, {T}, {I}] - [{h({l})}] (({t})) {m} (({M}, {f}, {L})){n}"
 
 root:
   level: info

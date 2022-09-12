@@ -69,6 +69,7 @@ struct GotoStatement {
 }
 
 struct ReturnStatement {
+    term @2 :Text;
     expression :union{
         some @0 :Text;
         none @1 :Void;
@@ -76,6 +77,7 @@ struct ReturnStatement {
 }
 
 struct ContinueStatement {
+    term @2 :Text;
     label :union{
         some @0 :Text;
         none @1 :Void;
@@ -83,6 +85,7 @@ struct ContinueStatement {
 }
 
 struct BreakStatement {
+    term @2 :Text;
     label :union{
         some @0 :Text;
         none @1 :Void;
@@ -90,10 +93,12 @@ struct BreakStatement {
 }
 
 struct YieldStatement {
+    term @1 :Text;
     statement @0 :Statement;
 }
 
 struct ThrowStatement {
+    term @2 :Text;
     exception @0 :List(Text);
     statement @1 :Text;
 }

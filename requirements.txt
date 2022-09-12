@@ -1,9 +1,0 @@
-jupyterlab
-tensorflow
-pandas
-sklearn
-seaborn
-networkx
-fastdtw
-tqdm
-gensim

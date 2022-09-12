@@ -39,16 +39,12 @@ import java.util.stream.Stream;
  * @author John Marsden
  */
 public class AstTagger {
-    private final Canonicalizer canonicalizer;
+    private final CanonicalizedPrinter canonicalizer;
     private int numIndexes = 0;
     private int numIterators = 0;
 
     public AstTagger() {
-        this(new Canonicalizer.None());
-    }
-
-    public AstTagger(Canonicalizer canonicalizer) {
-        this.canonicalizer = canonicalizer;
+        this.canonicalizer = new CanonicalizedPrinter();
     }
 
     /**
@@ -63,7 +59,7 @@ public class AstTagger {
                                                               String programId, boolean debugMode) {
         org.capnproto.MessageBuilder capnpMessageBuilder = new MessageBuilder();
         var messageBuilder = capnpMessageBuilder.initRoot(CfgGenerator.Message.factory);
-
+        compilationUnit.printer(this.canonicalizer);
         List<Pair<String, MethodDeclaration>> methods = new ArrayList<>();
         List<ClassOrInterfaceDeclaration> classes = compilationUnit
                 .findAll(ClassOrInterfaceDeclaration.class)
@@ -526,6 +522,7 @@ public class AstTagger {
 
     private void buildThrowStmt(ThrowStmt throwStmt, CfgGenerator.AstNode.Builder nodeBuilder) {
         var throwBuilder = nodeBuilder.initContents().initThrowStatement();
+        throwBuilder.setTerm("throw");
         throwBuilder.setStatement(throwStmt.toString());
 
         try {
@@ -552,6 +549,7 @@ public class AstTagger {
     // Control flow statement handlers
     private void buildBreakStmt(BreakStmt breakStmt, CfgGenerator.AstNode.Builder nodeBuilder) {
         var breakBuilder = nodeBuilder.initContents().initBreakStatement();
+        breakBuilder.setTerm("break");
         if (breakStmt.getLabel().isPresent()) {
             breakBuilder.initLabel().setSome(breakStmt.getLabel().get().toString());
         } else {
@@ -562,6 +560,7 @@ public class AstTagger {
     private void buildContinueStmt(ContinueStmt continueStmt,
                                    CfgGenerator.AstNode.Builder nodeBuilder) {
         var continueBuilder = nodeBuilder.initContents().initContinueStatement();
+        continueBuilder.setTerm("continue");
         if (continueStmt.getLabel().isPresent()) {
             continueBuilder.initLabel().setSome(continueStmt.getLabel().get().toString());
         } else {
@@ -571,10 +570,9 @@ public class AstTagger {
 
     private void buildReturnStmt(ReturnStmt returnStmt, CfgGenerator.AstNode.Builder nodeBuilder) {
         var returnBuilder = nodeBuilder.initContents().initReturnStatement();
+        returnBuilder.setTerm("return");
         if (returnStmt.getExpression().isPresent()) {
-            returnBuilder
-                    .initExpression()
-                    .setSome(this.canonicalizer.canonicalize(returnStmt.getExpression().get()));
+            returnBuilder.initExpression().setSome(this.canonicalizer.canonicalize(returnStmt.getExpression().get()));
         } else {
             returnBuilder.initExpression().setNone(Void.VOID);
         }

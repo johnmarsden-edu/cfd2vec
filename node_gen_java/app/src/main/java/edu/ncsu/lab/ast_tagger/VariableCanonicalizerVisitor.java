@@ -6,16 +6,14 @@ import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.expr.MethodReferenceExpr;
 import com.github.javaparser.ast.expr.SimpleName;
 import com.github.javaparser.ast.stmt.Statement;
-import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 
 import java.util.Optional;
 
 @SuppressWarnings("unchecked")
-public class VariableCanonicalizerVisitor extends VoidVisitorAdapter<Void> {
-
+public class VariableCanonicalizerVisitor extends CanonicalizerVisitor {
     @Override
     public void visit(VariableDeclarator variableDeclarator, Void ignored) {
-        variableDeclarator.setName("VAR");
+        super.tag(variableDeclarator.getName());
         if (variableDeclarator.getInitializer().isPresent()) {
             variableDeclarator.getInitializer().get().accept(this, ignored);
         }
@@ -29,7 +27,7 @@ public class VariableCanonicalizerVisitor extends VoidVisitorAdapter<Void> {
                         MethodReferenceExpr.class}
         );
         if (possibleAncestor.isPresent() && possibleAncestor.get() instanceof Statement) {
-            simpleName.setIdentifier("VAR");
+            super.tag(simpleName);
         }
         super.visit(simpleName, ignored);
     }

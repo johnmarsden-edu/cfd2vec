@@ -2315,6 +2315,14 @@ pub mod return_statement {
     pub fn get_expression(self) -> crate::capnp::message_capnp::return_statement::expression::Reader<'a> {
       ::capnp::traits::FromStructReader::new(self.reader)
     }
+    #[inline]
+    pub fn get_term(self) -> ::capnp::Result<::capnp::text::Reader<'a>> {
+      ::capnp::traits::FromPointerReader::get_from_pointer(&self.reader.get_pointer_field(1), ::core::option::Option::None)
+    }
+    #[inline]
+    pub fn has_term(&self) -> bool {
+      !self.reader.get_pointer_field(1).is_null()
+    }
   }
 
   pub struct Builder<'a> { builder: ::capnp::private::layout::StructBuilder<'a> }
@@ -2375,6 +2383,22 @@ pub mod return_statement {
       self.builder.get_pointer_field(0).clear();
       ::capnp::traits::FromStructBuilder::new(self.builder)
     }
+    #[inline]
+    pub fn get_term(self) -> ::capnp::Result<::capnp::text::Builder<'a>> {
+      ::capnp::traits::FromPointerBuilder::get_from_pointer(self.builder.get_pointer_field(1), ::core::option::Option::None)
+    }
+    #[inline]
+    pub fn set_term(&mut self, value: ::capnp::text::Reader<'_>)  {
+      self.builder.get_pointer_field(1).set_text(value);
+    }
+    #[inline]
+    pub fn init_term(self, size: u32) -> ::capnp::text::Builder<'a> {
+      self.builder.get_pointer_field(1).init_text(size)
+    }
+    #[inline]
+    pub fn has_term(&self) -> bool {
+      !self.builder.get_pointer_field(1).is_null()
+    }
   }
 
   pub struct Pipeline { _typeless: ::capnp::any_pointer::Pipeline }
@@ -2390,7 +2414,7 @@ pub mod return_statement {
   }
   mod _private {
     use capnp::private::layout;
-    pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 1, pointers: 1 };
+    pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 1, pointers: 2 };
     pub const TYPE_ID: u64 = 0xecd0_1f95_3dbf_75d8;
   }
 
@@ -2560,7 +2584,7 @@ pub mod return_statement {
     }
     mod _private {
       use capnp::private::layout;
-      pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 1, pointers: 1 };
+      pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 1, pointers: 2 };
       pub const TYPE_ID: u64 = 0xc7f4_b17b_66f7_6a0c;
     }
     pub enum Which<A0> {
@@ -2622,6 +2646,14 @@ pub mod continue_statement {
     pub fn get_label(self) -> crate::capnp::message_capnp::continue_statement::label::Reader<'a> {
       ::capnp::traits::FromStructReader::new(self.reader)
     }
+    #[inline]
+    pub fn get_term(self) -> ::capnp::Result<::capnp::text::Reader<'a>> {
+      ::capnp::traits::FromPointerReader::get_from_pointer(&self.reader.get_pointer_field(1), ::core::option::Option::None)
+    }
+    #[inline]
+    pub fn has_term(&self) -> bool {
+      !self.reader.get_pointer_field(1).is_null()
+    }
   }
 
   pub struct Builder<'a> { builder: ::capnp::private::layout::StructBuilder<'a> }
@@ -2682,6 +2714,22 @@ pub mod continue_statement {
       self.builder.get_pointer_field(0).clear();
       ::capnp::traits::FromStructBuilder::new(self.builder)
     }
+    #[inline]
+    pub fn get_term(self) -> ::capnp::Result<::capnp::text::Builder<'a>> {
+      ::capnp::traits::FromPointerBuilder::get_from_pointer(self.builder.get_pointer_field(1), ::core::option::Option::None)
+    }
+    #[inline]
+    pub fn set_term(&mut self, value: ::capnp::text::Reader<'_>)  {
+      self.builder.get_pointer_field(1).set_text(value);
+    }
+    #[inline]
+    pub fn init_term(self, size: u32) -> ::capnp::text::Builder<'a> {
+      self.builder.get_pointer_field(1).init_text(size)
+    }
+    #[inline]
+    pub fn has_term(&self) -> bool {
+      !self.builder.get_pointer_field(1).is_null()
+    }
   }
 
   pub struct Pipeline { _typeless: ::capnp::any_pointer::Pipeline }
@@ -2697,7 +2745,7 @@ pub mod continue_statement {
   }
   mod _private {
     use capnp::private::layout;
-    pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 1, pointers: 1 };
+    pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 1, pointers: 2 };
     pub const TYPE_ID: u64 = 0xf89a_8bd3_7cd8_b05a;
   }
 
@@ -2867,7 +2915,7 @@ pub mod continue_statement {
     }
     mod _private {
       use capnp::private::layout;
-      pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 1, pointers: 1 };
+      pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 1, pointers: 2 };
       pub const TYPE_ID: u64 = 0xfbe3_52f3_a605_56bd;
     }
     pub enum Which<A0> {
@@ -2929,6 +2977,14 @@ pub mod break_statement {
     pub fn get_label(self) -> crate::capnp::message_capnp::break_statement::label::Reader<'a> {
       ::capnp::traits::FromStructReader::new(self.reader)
     }
+    #[inline]
+    pub fn get_term(self) -> ::capnp::Result<::capnp::text::Reader<'a>> {
+      ::capnp::traits::FromPointerReader::get_from_pointer(&self.reader.get_pointer_field(1), ::core::option::Option::None)
+    }
+    #[inline]
+    pub fn has_term(&self) -> bool {
+      !self.reader.get_pointer_field(1).is_null()
+    }
   }
 
   pub struct Builder<'a> { builder: ::capnp::private::layout::StructBuilder<'a> }
@@ -2989,6 +3045,22 @@ pub mod break_statement {
       self.builder.get_pointer_field(0).clear();
       ::capnp::traits::FromStructBuilder::new(self.builder)
     }
+    #[inline]
+    pub fn get_term(self) -> ::capnp::Result<::capnp::text::Builder<'a>> {
+      ::capnp::traits::FromPointerBuilder::get_from_pointer(self.builder.get_pointer_field(1), ::core::option::Option::None)
+    }
+    #[inline]
+    pub fn set_term(&mut self, value: ::capnp::text::Reader<'_>)  {
+      self.builder.get_pointer_field(1).set_text(value);
+    }
+    #[inline]
+    pub fn init_term(self, size: u32) -> ::capnp::text::Builder<'a> {
+      self.builder.get_pointer_field(1).init_text(size)
+    }
+    #[inline]
+    pub fn has_term(&self) -> bool {
+      !self.builder.get_pointer_field(1).is_null()
+    }
   }
 
   pub struct Pipeline { _typeless: ::capnp::any_pointer::Pipeline }
@@ -3004,7 +3076,7 @@ pub mod break_statement {
   }
   mod _private {
     use capnp::private::layout;
-    pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 1, pointers: 1 };
+    pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 1, pointers: 2 };
     pub const TYPE_ID: u64 = 0x80cc_1e24_5149_7781;
   }
 
@@ -3174,7 +3246,7 @@ pub mod break_statement {
     }
     mod _private {
       use capnp::private::layout;
-      pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 1, pointers: 1 };
+      pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 1, pointers: 2 };
       pub const TYPE_ID: u64 = 0xd501_2151_dcb1_8b87;
     }
     pub enum Which<A0> {
@@ -3239,6 +3311,14 @@ pub mod yield_statement {
     #[inline]
     pub fn has_statement(&self) -> bool {
       !self.reader.get_pointer_field(0).is_null()
+    }
+    #[inline]
+    pub fn get_term(self) -> ::capnp::Result<::capnp::text::Reader<'a>> {
+      ::capnp::traits::FromPointerReader::get_from_pointer(&self.reader.get_pointer_field(1), ::core::option::Option::None)
+    }
+    #[inline]
+    pub fn has_term(&self) -> bool {
+      !self.reader.get_pointer_field(1).is_null()
     }
   }
 
@@ -3306,6 +3386,22 @@ pub mod yield_statement {
     pub fn has_statement(&self) -> bool {
       !self.builder.get_pointer_field(0).is_null()
     }
+    #[inline]
+    pub fn get_term(self) -> ::capnp::Result<::capnp::text::Builder<'a>> {
+      ::capnp::traits::FromPointerBuilder::get_from_pointer(self.builder.get_pointer_field(1), ::core::option::Option::None)
+    }
+    #[inline]
+    pub fn set_term(&mut self, value: ::capnp::text::Reader<'_>)  {
+      self.builder.get_pointer_field(1).set_text(value);
+    }
+    #[inline]
+    pub fn init_term(self, size: u32) -> ::capnp::text::Builder<'a> {
+      self.builder.get_pointer_field(1).init_text(size)
+    }
+    #[inline]
+    pub fn has_term(&self) -> bool {
+      !self.builder.get_pointer_field(1).is_null()
+    }
   }
 
   pub struct Pipeline { _typeless: ::capnp::any_pointer::Pipeline }
@@ -3321,7 +3417,7 @@ pub mod yield_statement {
   }
   mod _private {
     use capnp::private::layout;
-    pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 0, pointers: 1 };
+    pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 0, pointers: 2 };
     pub const TYPE_ID: u64 = 0x80e5_1f9a_12de_7c76;
   }
 }
@@ -3387,6 +3483,14 @@ pub mod throw_statement {
     #[inline]
     pub fn has_statement(&self) -> bool {
       !self.reader.get_pointer_field(1).is_null()
+    }
+    #[inline]
+    pub fn get_term(self) -> ::capnp::Result<::capnp::text::Reader<'a>> {
+      ::capnp::traits::FromPointerReader::get_from_pointer(&self.reader.get_pointer_field(2), ::core::option::Option::None)
+    }
+    #[inline]
+    pub fn has_term(&self) -> bool {
+      !self.reader.get_pointer_field(2).is_null()
     }
   }
 
@@ -3470,6 +3574,22 @@ pub mod throw_statement {
     pub fn has_statement(&self) -> bool {
       !self.builder.get_pointer_field(1).is_null()
     }
+    #[inline]
+    pub fn get_term(self) -> ::capnp::Result<::capnp::text::Builder<'a>> {
+      ::capnp::traits::FromPointerBuilder::get_from_pointer(self.builder.get_pointer_field(2), ::core::option::Option::None)
+    }
+    #[inline]
+    pub fn set_term(&mut self, value: ::capnp::text::Reader<'_>)  {
+      self.builder.get_pointer_field(2).set_text(value);
+    }
+    #[inline]
+    pub fn init_term(self, size: u32) -> ::capnp::text::Builder<'a> {
+      self.builder.get_pointer_field(2).init_text(size)
+    }
+    #[inline]
+    pub fn has_term(&self) -> bool {
+      !self.builder.get_pointer_field(2).is_null()
+    }
   }
 
   pub struct Pipeline { _typeless: ::capnp::any_pointer::Pipeline }
@@ -3482,7 +3602,7 @@ pub mod throw_statement {
   }
   mod _private {
     use capnp::private::layout;
-    pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 0, pointers: 2 };
+    pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 0, pointers: 3 };
     pub const TYPE_ID: u64 = 0xf722_3533_0a77_320e;
   }
 }
