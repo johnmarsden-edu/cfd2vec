@@ -1,0 +1,89 @@
+2021-10-20 22:07:01.230107: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'cudart64_110.dll'; dlerror: cudart64_110.dll not found
+2021-10-20 22:07:01.230254: I tensorflow/stream_executor/cuda/cudart_stub.cc:29] Ignore above cudart dlerror if you do not have a GPU set up on your machine.
+2021-10-20 22:07:03.397358: W tensorflow/stream_executor/platform/default/dso_loader.cc:64] Could not load dynamic library 'nvcuda.dll'; dlerror: nvcuda.dll not found
+2021-10-20 22:07:03.397390: W tensorflow/stream_executor/cuda/cuda_driver.cc:269] failed call to cuInit: UNKNOWN ERROR (303)
+2021-10-20 22:07:03.399706: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:169] retrieving CUDA diagnostic information for host: DESKTOP-J8GSJ7Q
+2021-10-20 22:07:03.399775: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:176] hostname: DESKTOP-J8GSJ7Q
+2021-10-20 22:07:03.400083: I tensorflow/core/platform/cpu_feature_guard.cc:142] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX AVX2
+To enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.
+2021-10-20 22:07:03,400 INFO     
+2021-10-20 22:07:03,400 INFO     
+2021-10-20 22:07:03,400 INFO     ---------------------------------------------------------------------
+2021-10-20 22:07:03,400 INFO     ---------------------------------------------------------------------
+2021-10-20 22:07:03,401 INFO     ---------------------- Creating code2vec model ----------------------
+2021-10-20 22:07:03,401 INFO     ---------------------------------------------------------------------
+2021-10-20 22:07:03,401 INFO     ---------------------------------------------------------------------
+2021-10-20 22:07:03,401 INFO     Checking number of examples ...
+2021-10-20 22:07:03,401 INFO         Number of test examples: 3369
+2021-10-20 22:07:03,401 INFO     ---------------------------------------------------------------------
+2021-10-20 22:07:03,401 INFO     ----------------- Configuration - Hyper Parameters ------------------
+2021-10-20 22:07:03,401 INFO     CODE_VECTOR_SIZE                          384
+2021-10-20 22:07:03,401 INFO     CSV_BUFFER_SIZE                           104857600
+2021-10-20 22:07:03,401 INFO     DEFAULT_EMBEDDINGS_SIZE                   128
+2021-10-20 22:07:03,401 INFO     DL_FRAMEWORK                              tensorflow
+2021-10-20 22:07:03,401 INFO     DROPOUT_KEEP_RATE                         0.75
+2021-10-20 22:07:03,401 INFO     EXPORT_CODE_VECTORS                       False
+2021-10-20 22:07:03,401 INFO     LOGS_PATH                                 None
+2021-10-20 22:07:03,401 INFO     MAX_CONTEXTS                              200
+2021-10-20 22:07:03,401 INFO     MAX_PATH_VOCAB_SIZE                       911417
+2021-10-20 22:07:03,401 INFO     MAX_TARGET_VOCAB_SIZE                     261245
+2021-10-20 22:07:03,401 INFO     MAX_TOKEN_VOCAB_SIZE                      1301136
+2021-10-20 22:07:03,401 INFO     MAX_TO_KEEP                               10
+2021-10-20 22:07:03,401 INFO     MODEL_LOAD_PATH                           models/test_model/saved_model
+2021-10-20 22:07:03,401 INFO     MODEL_SAVE_PATH                           None
+2021-10-20 22:07:03,402 INFO     NUM_BATCHES_TO_LOG_PROGRESS               100
+2021-10-20 22:07:03,402 INFO     NUM_TEST_EXAMPLES                         3369
+2021-10-20 22:07:03,402 INFO     NUM_TRAIN_BATCHES_TO_EVALUATE             1800
+2021-10-20 22:07:03,402 INFO     NUM_TRAIN_EPOCHS                          20
+2021-10-20 22:07:03,402 INFO     NUM_TRAIN_EXAMPLES                        0
+2021-10-20 22:07:03,402 INFO     PATH_EMBEDDINGS_SIZE                      128
+2021-10-20 22:07:03,402 INFO     PREDICT                                   False
+2021-10-20 22:07:03,402 INFO     READER_NUM_PARALLEL_BATCHES               6
+2021-10-20 22:07:03,402 INFO     RELEASE                                   False
+2021-10-20 22:07:03,402 INFO     SAVE_EVERY_EPOCHS                         1
+2021-10-20 22:07:03,402 INFO     SAVE_T2V                                  None
+2021-10-20 22:07:03,402 INFO     SAVE_W2V                                  None
+2021-10-20 22:07:03,402 INFO     SEPARATE_OOV_AND_PAD                      False
+2021-10-20 22:07:03,402 INFO     SHUFFLE_BUFFER_SIZE                       10000
+2021-10-20 22:07:03,402 INFO     TARGET_EMBEDDINGS_SIZE                    384
+2021-10-20 22:07:03,402 INFO     TEST_BATCH_SIZE                           1024
+2021-10-20 22:07:03,402 INFO     TEST_DATA_PATH                            data/my_dataset/my_dataset.test.c2v
+2021-10-20 22:07:03,402 INFO     TOKEN_EMBEDDINGS_SIZE                     128
+2021-10-20 22:07:03,402 INFO     TOP_K_WORDS_CONSIDERED_DURING_PREDICTION  10
+2021-10-20 22:07:03,402 INFO     TRAIN_BATCH_SIZE                          1024
+2021-10-20 22:07:03,402 INFO     TRAIN_DATA_PATH_PREFIX                    None
+2021-10-20 22:07:03,402 INFO     USE_TENSORBOARD                           False
+2021-10-20 22:07:03,402 INFO     VERBOSE_MODE                              1
+2021-10-20 22:07:03,402 INFO     _Config__logger                           <Logger code2vec (INFO)>
+2021-10-20 22:07:03,402 INFO     context_vector_size                       384
+2021-10-20 22:07:03,402 INFO     entire_model_load_path                    models/test_model/saved_model__entire-model
+2021-10-20 22:07:03,402 INFO     entire_model_save_path                    None
+2021-10-20 22:07:03,402 INFO     is_loading                                True
+2021-10-20 22:07:03,402 INFO     is_saving                                 False
+2021-10-20 22:07:03,402 INFO     is_testing                                True
+2021-10-20 22:07:03,402 INFO     is_training                               False
+2021-10-20 22:07:03,402 INFO     model_load_dir                            models/test_model
+2021-10-20 22:07:03,402 INFO     model_weights_load_path                   models/test_model/saved_model__only-weights
+2021-10-20 22:07:03,403 INFO     model_weights_save_path                   None
+2021-10-20 22:07:03,403 INFO     test_steps                                4
+2021-10-20 22:07:03,403 INFO     train_data_path                           None
+2021-10-20 22:07:03,403 INFO     train_steps_per_epoch                     0
+2021-10-20 22:07:03,403 INFO     word_freq_dict_path                       None
+2021-10-20 22:07:03,403 INFO     ---------------------------------------------------------------------
+2021-10-20 22:07:03,403 INFO     Loading model vocabularies from: `models/test_model/dictionaries.bin` ... 
+2021-10-20 22:07:03,478 INFO     Done loading model vocabularies.
+2021-10-20 22:07:03,481 INFO     Done creating code2vec model
+2021-10-20 22:07:05,408 INFO     Initalized variables
+2021-10-20 22:07:05,408 INFO     Loading model weights from: models/test_model/saved_model
+2021-10-20 22:07:05,534 INFO     Done loading model weights
+2021-10-20 22:07:05.654022: I tensorflow/compiler/mlir/mlir_graph_optimization_pass.cc:185] None of the MLIR Optimization Passes are enabled (registered 2)
+2021-10-20 22:07:05,702 INFO     Starting evaluation
+2021-10-20 22:07:06.402809: W tensorflow/core/framework/cpu_allocator_impl.cc:80] Allocation of 314572800 exceeds 10% of free system memory.
+2021-10-20 22:07:06.495032: W tensorflow/core/framework/cpu_allocator_impl.cc:80] Allocation of 314572800 exceeds 10% of free system memory.
+2021-10-20 22:07:07.062455: W tensorflow/core/framework/cpu_allocator_impl.cc:80] Allocation of 314572800 exceeds 10% of free system memory.
+2021-10-20 22:07:07.178029: W tensorflow/core/framework/cpu_allocator_impl.cc:80] Allocation of 314572800 exceeds 10% of free system memory.
+2021-10-20 22:07:07.655934: W tensorflow/core/framework/cpu_allocator_impl.cc:80] Allocation of 314572800 exceeds 10% of free system memory.
+2021-10-20 22:07:08,341 INFO     Done evaluating, epoch reached
+2021-10-20 22:07:08,342 INFO     Evaluation time: 0H:0M:4S
+2021-10-20 22:07:08,342 INFO     top10_acc: [0.96764619 0.9839715  0.98961116 0.9913921  0.99317305 0.99436034
+ 0.99525082 0.99584446 0.99584446 0.99614129], precision: 0.968444658016979, recall: 0.9703097416145081, F1: 0.969376302709636

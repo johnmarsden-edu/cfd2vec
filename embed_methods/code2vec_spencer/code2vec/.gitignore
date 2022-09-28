@@ -1,0 +1,8 @@
+*.class
+*.lst
+**/models/**
+**/data/**
+**/.idea/**
+*.tar.gz
+**/log.txt
+**/raw_code/**

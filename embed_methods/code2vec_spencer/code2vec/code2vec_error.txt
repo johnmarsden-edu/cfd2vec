@@ -1,0 +1,53 @@
+Traceback (most recent call last):
+  File "C:\Users\User\AppData\Local\Programs\Python\Python39\lib\site-packages\tensorflow\python\client\session.py", line 1375, in _do_call
+    return fn(*args)
+  File "C:\Users\User\AppData\Local\Programs\Python\Python39\lib\site-packages\tensorflow\python\client\session.py", line 1359, in _run_fn
+    return self._call_tf_sessionrun(options, feed_dict, fetch_list,
+  File "C:\Users\User\AppData\Local\Programs\Python\Python39\lib\site-packages\tensorflow\python\client\session.py", line 1451, in _call_tf_sessionrun
+    return tf_session.TF_SessionRun_wrapper(self._session, options, feed_dict,
+tensorflow.python.framework.errors_impl.NotFoundError: NewRandomAccessFile failed to Create/Open:  : The system cannot find the path specified.
+; No such process
+         [[{{node IteratorGetNext_1}}]]
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\User\<local file path>\code2vec.py", line 23, in <module>
+    model.train()
+  File "C:\Users\User\<local file path>\tensorflow_model.py", line 95, in train
+    evaluation_results = self.evaluate()
+  File "C:\Users\User\<local file path>\tensorflow_model.py", line 158, in evaluate
+    top_words, top_scores, original_names, code_vectors = self.sess.run(
+  File "C:\Users\User\AppData\Local\Programs\Python\Python39\lib\site-packages\tensorflow\python\client\session.py", line 967, in run
+    result = self._run(None, fetches, feed_dict, options_ptr,
+  File "C:\Users\User\AppData\Local\Programs\Python\Python39\lib\site-packages\tensorflow\python\client\session.py", line 1190, in _run
+    results = self._do_run(handle, final_targets, final_fetches,
+  File "C:\Users\User\AppData\Local\Programs\Python\Python39\lib\site-packages\tensorflow\python\client\session.py", line 1368, in _do_run
+    return self._do_call(_run_fn, feeds, fetches, targets, options,
+  File "C:\Users\User\AppData\Local\Programs\Python\Python39\lib\site-packages\tensorflow\python\client\session.py", line 1394, in _do_call
+    raise type(e)(node_def, op, message)  # pylint: disable=no-value-for-parameter
+tensorflow.python.framework.errors_impl.NotFoundError: NewRandomAccessFile failed to Create/Open:  : The system cannot find the path specified.
+; No such process
+         [[node IteratorGetNext_1 (defined at \<local file path>\tensorflow_model.py:122) ]]
+
+Errors may have originated from an input operation.
+Input Source operations connected to node IteratorGetNext_1:
+ IteratorV2_1 (defined at \<local file path>\tensorflow_model.py:120)
+
+Original stack trace for 'IteratorGetNext_1':
+  File "\<local file path>\code2vec.py", line 23, in <module>
+    model.train()
+  File "\<local file path>\tensorflow_model.py", line 95, in train
+    evaluation_results = self.evaluate()
+  File "\<local file path>\tensorflow_model.py", line 122, in evaluate
+    input_tensors = input_iterator.get_next()
+  File "\AppData\Local\Programs\Python\Python39\lib\site-packages\tensorflow\python\data\ops\iterator_ops.py", line 416, in get_next
+    flat_ret = gen_dataset_ops.iterator_get_next(
+  File "\AppData\Local\Programs\Python\Python39\lib\site-packages\tensorflow\python\ops\gen_dataset_ops.py", line 2747, in iterator_get_next
+    _, _, _op, _outputs = _op_def_library._apply_op_helper(
+  File "\AppData\Local\Programs\Python\Python39\lib\site-packages\tensorflow\python\framework\op_def_library.py", line 748, in _apply_op_helper
+    op = g._create_op_internal(op_type_name, inputs, dtypes=None,
+  File "\AppData\Local\Programs\Python\Python39\lib\site-packages\tensorflow\python\framework\ops.py", line 3561, in _create_op_internal
+    ret = Operation(
+  File "\AppData\Local\Programs\Python\Python39\lib\site-packages\tensorflow\python\framework\ops.py", line 2045, in __init__
+    self._traceback = tf_stack.extract_stack_for_node(self._c_op)
