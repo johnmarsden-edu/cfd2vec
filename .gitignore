@@ -167,3 +167,4 @@ analysis/save*
 *.pth
 .~lock*
 **/code2vec/
+Vectors/
