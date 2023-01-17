@@ -2,5 +2,6 @@
 members = [
     "fuzz",
     "cfg_generator",
-    "read_afl_crashes"
+    "read_afl_crashes",
+    "petgraph-graphml"
 ]

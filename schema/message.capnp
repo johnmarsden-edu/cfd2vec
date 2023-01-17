@@ -9,6 +9,7 @@ $Rust.parentModule("capnp");
 struct Message {
     methods @0 :List(AstNode);
     programId @1 :Text;
+    programGroup @4 :Text;
     debug :union {
         some @2 :Text;
         none @3 :Void;

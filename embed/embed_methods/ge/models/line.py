@@ -27,7 +27,7 @@ from tensorflow.python.keras.layers import Embedding, Input, Lambda
 from tensorflow.python.keras.models import Model
 
 from ..alias import create_alias_table, alias_sample
-from ..utils import preprocess_nxgraph
+from ..utils import preprocess_graph
 
 
 def line_loss(y_true, y_pred):
@@ -79,7 +79,7 @@ class LINE:
             raise ValueError('mode must be fisrt,second,or all')
 
         self.graph = graph
-        self.idx2node, self.node2idx = preprocess_nxgraph(graph)
+        self.idx2node, self.node2idx = preprocess_graph(graph)
         self.use_alias = True
 
         self.rep_size = embedding_size

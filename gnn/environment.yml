@@ -1,0 +1,13 @@
+channels:
+  - nodefaults
+dependencies:
+  - conda-forge::graph-tool
+  - pyg::pyg
+  - anaconda::pandas
+  - pytorch::pytorch=1.13.1
+  - pytorch::torchvision
+  - pytorch::torchaudio
+  - pytorch::torchtext
+  - nvidia::cudatoolkit=11.7
+  - conda-forge::scikit-learn-intelex
+  - anaconda::lxml

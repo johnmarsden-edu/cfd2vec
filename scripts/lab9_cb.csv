@@ -1,0 +1,35 @@
+tag,description,number of highlights
+Validates the value of the integer inside the getInteger method instead of the Main method,Problem Description,2
+Converts to integer without validation,Problems with validation. Possible problem with nested loops. Problem with positioning statements,0
+Correct,,2
+Does not check for negative parameter input in getSeries,Problem description,1
+Does not check for zero parameter input in getSeries,Problem Description. Boundary Value Error,9
+Does not check for negative user input in main method,Problem description,1
+Does not check for zero user input in main,Problem Description. Boundary Value Error,9
+Empty loop,Unnecessary Construct used,1
+Expression that can’t or must be true,Control flow,0
+Validation of user input is incorrect,Problem description. Problem with validation,0
+Irrelevant File,,1
+Method validation is not at the beginning of the method,Problem with method validation,2
+No user input validation,Problem  with the description,3
+No method validation,Problem with method validation,0
+No throw message,Problem description. Problem with throw statement.,0
+No throw statement in method validation,Problem description,0
+getInteger is not implemented ,Problem with reading from the command line.,0
+getSeries is not implemented,"Problem description, Problem with calculating square.",1
+Not using scanner nextInt() and hasNextInt(),Using the Scanner API inadequately or incorrectly,0
+Prints error messages instead of throwing exceptions,Problem Description. Not understanding exceptions,0
+Prints output in getSeries,Problem Description,0
+Does not return string in getSeries,Problem Description,0
+Replace parameter with new value,Misunderstanding of how parameters work in the method,0
+Returns default,Problem Description,1
+Used variable name in string instead of value,String concatenation,1
+Too similar,,1
+Used a math library function,Problem description,1
+Wrong square calculation,Problem Description. Error with understanding how to calculate the squares,2
+Tagged,,2
+Creates multiple scanners,Not understanding correct usage of the Scanner API,1
+Returns string from getSeries with extra space at the beginning or end,Problem description,1
+Tries to consume user input that has already been consumed,Not understanding correct usage of the Scanner API,0
+Does not clear previous input during input loop,Not understanding correct usage of the Scanner API,0
+Exception message is incorrectly formatted in getSeries,Problem Description,0

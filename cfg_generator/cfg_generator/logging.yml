@@ -11,4 +11,4 @@ root:
 
 loggers:
   cfg_generator:
-    level: debug
+    level: info 

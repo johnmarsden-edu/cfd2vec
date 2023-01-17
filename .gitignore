@@ -164,5 +164,6 @@ Stats.csv
 *.dot
 *.png
 analysis/save*
-
+*.pth
 .~lock*
+**/code2vec/

@@ -3,5 +3,4 @@ extern crate core;
 
 pub mod capnp;
 pub mod cfg;
-pub mod db;
 pub mod server;

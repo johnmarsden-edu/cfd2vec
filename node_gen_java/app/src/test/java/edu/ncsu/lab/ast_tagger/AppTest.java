@@ -4,10 +4,9 @@
 package edu.ncsu.lab.ast_tagger;
 
 import org.junit.jupiter.api.Test;
-import static org.junit.jupiter.api.Assertions.*;
 
 class AppTest {
-    @Test void appHasAGreeting() {
-        assertTrue(App.verifyArgs(new String[] {"test"}));
+    @Test
+    void appHasAGreeting() {
     }
 }

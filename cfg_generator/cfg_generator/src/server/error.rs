@@ -11,35 +11,10 @@ pub enum CfgServerError {
         #[from]
         error: std::io::Error,
     },
-    #[error("There was an error running dotenv: {error}")]
-    DotEnv {
-        #[from]
-        error: dotenvy::Error,
-    },
-    #[error("There was an error configuring the database connection: {error}")]
-    Config {
-        #[from]
-        error: config::ConfigError,
-    },
-    #[error("There was an error creating the database connection pool: {error}")]
-    CreatePool {
-        #[from]
-        error: deadpool_postgres::CreatePoolError,
-    },
-    #[error("There was an error building the database pool: {error}")]
-    BuildPool {
-        #[from]
-        error: deadpool_postgres::BuildError,
-    },
     #[error("There was an error registering the termination listener")]
     CtrlC {
         #[from]
         error: ctrlc::Error,
-    },
-    #[error("There was an error getting a database connection from the pool: {error}")]
-    Pool {
-        #[from]
-        error: deadpool_postgres::PoolError,
     },
 }
 
@@ -49,11 +24,6 @@ pub enum ConnectionError {
     TcpConnectionError {
         #[from]
         error: std::io::Error,
-    },
-    #[error("There was an error getting a database connection: {error}")]
-    DatabasePoolConnectError {
-        #[from]
-        error: deadpool_postgres::PoolError,
     },
 }
 
@@ -85,14 +55,9 @@ pub enum MessageProcessingError {
         #[from]
         error: std::io::Error,
     },
-    #[error("Error while running database queries: {error}")]
-    Database {
-        #[from]
-        error: tokio_postgres::Error,
-    },
     #[error("Error while trying to create a file for a graph in the message")]
     GraphCreation,
-    #[error("Sending error while sending a processed program to the DB storage worker: {error}")]
+    #[error("Error while sending a processed program to the DB storage worker: {error}")]
     Send {
         #[from]
         error: mpsc::error::SendError<ProcessedProgram>,

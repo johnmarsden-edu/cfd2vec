@@ -69,6 +69,14 @@ pub mod message {
     pub fn get_debug(self) -> crate::capnp::message_capnp::message::debug::Reader<'a> {
       ::capnp::traits::FromStructReader::new(self.reader)
     }
+    #[inline]
+    pub fn get_program_group(self) -> ::capnp::Result<::capnp::text::Reader<'a>> {
+      ::capnp::traits::FromPointerReader::get_from_pointer(&self.reader.get_pointer_field(3), ::core::option::Option::None)
+    }
+    #[inline]
+    pub fn has_program_group(&self) -> bool {
+      !self.reader.get_pointer_field(3).is_null()
+    }
   }
 
   pub struct Builder<'a> { builder: ::capnp::private::layout::StructBuilder<'a> }
@@ -161,6 +169,22 @@ pub mod message {
       self.builder.get_pointer_field(2).clear();
       ::capnp::traits::FromStructBuilder::new(self.builder)
     }
+    #[inline]
+    pub fn get_program_group(self) -> ::capnp::Result<::capnp::text::Builder<'a>> {
+      ::capnp::traits::FromPointerBuilder::get_from_pointer(self.builder.get_pointer_field(3), ::core::option::Option::None)
+    }
+    #[inline]
+    pub fn set_program_group(&mut self, value: ::capnp::text::Reader<'_>)  {
+      self.builder.get_pointer_field(3).set_text(value);
+    }
+    #[inline]
+    pub fn init_program_group(self, size: u32) -> ::capnp::text::Builder<'a> {
+      self.builder.get_pointer_field(3).init_text(size)
+    }
+    #[inline]
+    pub fn has_program_group(&self) -> bool {
+      !self.builder.get_pointer_field(3).is_null()
+    }
   }
 
   pub struct Pipeline { _typeless: ::capnp::any_pointer::Pipeline }
@@ -176,7 +200,7 @@ pub mod message {
   }
   mod _private {
     use capnp::private::layout;
-    pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 1, pointers: 3 };
+    pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 1, pointers: 4 };
     pub const TYPE_ID: u64 = 0xca81_a42d_0c89_56cc;
   }
 
@@ -346,7 +370,7 @@ pub mod message {
     }
     mod _private {
       use capnp::private::layout;
-      pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 1, pointers: 3 };
+      pub const STRUCT_SIZE: layout::StructSize = layout::StructSize { data: 1, pointers: 4 };
       pub const TYPE_ID: u64 = 0xf86d_5764_abed_9a5e;
     }
     pub enum Which<A0> {

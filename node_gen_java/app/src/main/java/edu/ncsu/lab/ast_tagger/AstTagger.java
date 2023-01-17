@@ -1,6 +1,6 @@
 package edu.ncsu.lab.ast_tagger;
 
-import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.NodeList;
@@ -42,8 +42,10 @@ public class AstTagger {
     private final CanonicalizedPrinter canonicalizer;
     private int numIndexes = 0;
     private int numIterators = 0;
+    private final JavaParser parser;
 
-    public AstTagger() {
+    public AstTagger(JavaParser parser) {
+        this.parser = parser;
         this.canonicalizer = new CanonicalizedPrinter();
     }
 
@@ -56,6 +58,7 @@ public class AstTagger {
      * @return The Cap'n Proto message to send over the wire
      */
     public org.capnproto.MessageBuilder buildTaggedAstMessage(CompilationUnit compilationUnit,
+                                                              String programGroup,
                                                               String programId, boolean debugMode) {
         org.capnproto.MessageBuilder capnpMessageBuilder = new MessageBuilder();
         var messageBuilder = capnpMessageBuilder.initRoot(CfgGenerator.Message.factory);
@@ -75,6 +78,7 @@ public class AstTagger {
         }
 
         messageBuilder.setProgramId(programId);
+        messageBuilder.setProgramGroup(programGroup);
         var methodsBuilder = messageBuilder.initMethods(methods.size());
         var methodsBuilderIt = methodsBuilder.iterator();
         var methodsIt = methods.iterator();
@@ -259,20 +263,20 @@ public class AstTagger {
 
             var isString = refType.isPresent() && refType.get().getClassName().equals("String");
 
-            var varDecl = AstTagger.parseStatement(varType + " " + varName + ";");
+            var varDecl = this.parseStatement(varType + " " + varName + ";");
 
-            var indexInit = AstTagger.parseStatement("int index" + numIndexes + " = 0;");
+            var indexInit = this.parseStatement("int index" + numIndexes + " = 0;");
 
             String getString = isString ? ".get(index" + numIndexes + ")" :
                                "[index" + numIndexes + "]";
 
-            Statement varSet = AstTagger.parseStatement(
+            Statement varSet = this.parseStatement(
                     varName + " = (" + forEachStmt.getIterable() + ")" + getString + ";");
 
-            Expression updateIndex = AstTagger.parseExpression("index" + numIndexes + "++");
+            Expression updateIndex = this.parseExpression("index" + numIndexes + "++");
 
             String lengthString = isString ? ".length()" : ".length";
-            Expression condition = AstTagger.parseExpression(
+            Expression condition = this.parseExpression(
                     "index" + numIndexes + " < (" + forEachStmt.getIterable() + ")" + lengthString);
 
 
@@ -296,13 +300,12 @@ public class AstTagger {
             }
 
             var iteratorType = itTypeParams.getTypes().get(0).asReferenceType().getQualifiedName();
-            var iteratorInit = AstTagger.parseStatement(
+            var iteratorInit = this.parseStatement(
                     "Iterator<" + iteratorType + "> " + "iterator" + numIterators + " = " + forEachStmt.getIterable() + ".iterator();");
 
-            var varDecl = AstTagger.parseStatement(varType + " " + varName + ";");
-            var varSet = AstTagger.parseStatement(
-                    varName + " = iterator" + numIterators + ".next();");
-            var condition = AstTagger.parseExpression("iterator" + numIterators + ".hasNext()");
+            var varDecl = this.parseStatement(varType + " " + varName + ";");
+            var varSet = this.parseStatement(varName + " = iterator" + numIterators + ".next();");
+            var condition = this.parseExpression("iterator" + numIterators + ".hasNext()");
 
             this.addVarSetToBlock(forEachStmt, varSet);
             numIterators++;
@@ -407,7 +410,7 @@ public class AstTagger {
             condStringBuilder.append(this.canonicalizer.canonicalize(this.TRUE));
         }
 
-        var condition = AstTagger.parseExpression(condStringBuilder.toString());
+        var condition = this.parseExpression(condStringBuilder.toString());
         this.buildCondition(condition, conditionBuilder);
 
         this.buildSwitchBlock(
@@ -503,6 +506,9 @@ public class AstTagger {
                     result.add(ancestor.describe());
                 }
                 return result.stream();
+            } catch (IllegalStateException ignored) {
+                System.out.println("THIS IS BULLSHIT AND I FUCKING HATE IT");
+                return Stream.of(rt.toString());
             } catch (UnsolvedSymbolException ignored) {
                 return Stream.of(rt.toString());
             }
@@ -572,7 +578,9 @@ public class AstTagger {
         var returnBuilder = nodeBuilder.initContents().initReturnStatement();
         returnBuilder.setTerm("return");
         if (returnStmt.getExpression().isPresent()) {
-            returnBuilder.initExpression().setSome(this.canonicalizer.canonicalize(returnStmt.getExpression().get()));
+            returnBuilder
+                    .initExpression()
+                    .setSome(this.canonicalizer.canonicalize(returnStmt.getExpression().get()));
         } else {
             returnBuilder.initExpression().setNone(Void.VOID);
         }
@@ -626,9 +634,10 @@ public class AstTagger {
             case ReturnStmt returnStmt -> this.buildReturnStmt(returnStmt, statementBuilder);
 
             // Expected to be handled elsewhere
-            case BlockStmt ignored -> throw new UnsupportedOperationException(
-                    "Block statement " + "being handled " + "in" + " build statement" + " instead"
-                    + " of " + "build block as " + "it " + "should be.");
+            case BlockStmt blockStmt -> {
+                var blockBuilder = statementBuilder.initContents().initBlock();
+                this.buildBlock(Optional.of(blockStmt), blockBuilder, methodNamespace);
+            }
             // Handled here
             default -> {
                 var stmtBuilder = statementBuilder.initContents().initStatement();
@@ -747,18 +756,18 @@ public class AstTagger {
         }
     }
 
-    private static Expression parseExpression(String expr) {
+    private Expression parseExpression(String expr) {
         try {
-            return StaticJavaParser.parseExpression(expr);
+            return this.parser.parseExpression(expr).getResult().orElseThrow();
         } catch (Exception e) {
             System.err.println("Expression: " + expr);
             throw e;
         }
     }
 
-    private static Statement parseStatement(String expr) {
+    private Statement parseStatement(String expr) {
         try {
-            return StaticJavaParser.parseStatement(expr);
+            return this.parser.parseStatement(expr).getResult().orElseThrow();
         } catch (Exception e) {
             System.err.println("Statement: " + expr);
             throw e;

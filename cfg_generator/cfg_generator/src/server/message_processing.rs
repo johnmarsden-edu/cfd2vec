@@ -1,35 +1,22 @@
 use crate::capnp::readers::message;
 use crate::cfg::{Edge, MethodProcessingError, Node};
-use crate::db::cornucopia;
-use petgraph::stable_graph::{NodeIndex, StableDiGraph};
-
-#[derive(Debug)]
-pub struct ProcessedNode {
-    pub node_index: NodeIndex,
-    pub label: Option<String>,
-    pub node_type: cornucopia::types::public::NodeType,
-    pub contents: Option<String>,
-}
-
-#[derive(Debug)]
-pub struct ProcessedEdge {
-    pub source: NodeIndex,
-    pub target: NodeIndex,
-    pub edge_type: cornucopia::types::public::EdgeType,
-    pub direction: Option<bool>,
-    pub exception: Option<String>,
-}
+use petgraph::stable_graph::StableDiGraph;
 
 #[derive(Debug)]
 pub struct ProcessedGraph {
+    /// The ID of this particular graph in a group of programs
     pub graph_id: String,
-    pub nodes: Vec<ProcessedNode>,
-    pub edges: Vec<ProcessedEdge>,
+    /// The contents of this particular graph that will be written to a file
+    pub graph_contents: String,
 }
 
 #[derive(Debug)]
 pub struct ProcessedProgram {
+    /// The ID of this particular program in this group of programs
     pub program_id: String,
+    /// The group that this particular program belongs to
+    pub program_group: String,
+    /// The graphs contained in this program
     pub graphs: Vec<ProcessedGraph>,
 }
 

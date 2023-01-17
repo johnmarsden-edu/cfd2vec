@@ -1,12 +1,21 @@
-def preprocess_nxgraph(graph):
-    node2idx = {}
-    idx2node = []
-    node_size = 0
-    for node in graph.nodes():
-        node2idx[node] = node_size
-        idx2node.append(node)
-        node_size += 1
-    return idx2node, node2idx
+from typing import Any
+from graph_tool.all import Graph
+import numpy as np
+
+def preprocess_graph(graph: Graph):
+    vertex2idx: dict[Any, int] = {}
+    idx2vertex: list[Any] = []
+    for idx, vertex in enumerate(graph.vertices()):
+        vertex2idx[vertex] = idx
+        idx2vertex.append(vertex)
+
+    return idx2vertex, vertex2idx
+
+
+int_array = np.ndarray[Any, np.dtype[np.int32]]
+
+def partition_np_array(vertices: int_array, num_workers: int) -> list[int_array]:
+    return np.array_split(vertices, num_workers, 0)
 
 
 def partition_dict(vertices, workers):
@@ -25,11 +34,11 @@ def partition_dict(vertices, workers):
     return part_list
 
 
-def partition_list(vertices, workers):
-    num_vertices = len(vertices)
-    batch_size = (num_vertices - 1) // workers + 1
-    part_list = []
-    prev = 0
+def partition_list(vertices: list[int], workers: int) -> list[list[int]]:
+    num_vertices: int = len(vertices)
+    batch_size: int = (num_vertices - 1) // workers + 1
+    part_list: list[list[int]] = []
+    prev: int = 0
     for cur in range(batch_size, num_vertices + batch_size, batch_size):
         if cur > num_vertices:
             part_list.append(vertices[prev:num_vertices])
@@ -39,8 +48,8 @@ def partition_list(vertices, workers):
     return part_list
 
 
-def partition_num(num, workers):
+def partition_num(num: int, workers: int) -> list[int]:
     if num % workers == 0:
-        return [num//workers]*workers
+        return [num // workers] * workers
     else:
-        return [num//workers]*workers + [num % workers]
+        return [num // workers] * (workers - 1) + [(num // workers) + (num % workers)]

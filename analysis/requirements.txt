@@ -1,5 +1,4 @@
 jupyterlab
-tensorflow~=2.10.0
 pandas~=1.4.2
 sklearn~=0.0
 seaborn
@@ -16,6 +15,8 @@ matplotlib~=3.5.2
 setuptools~=58.1.0
 python-dotenv
 pygraphviz
-tensorflow_io
-keras
+torch
+torchvision
+torchaudio
 pydot
+ipywidgets

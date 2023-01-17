@@ -28,7 +28,7 @@ from tensorflow.python.keras.layers import Dense, Input
 from tensorflow.python.keras.models import Model
 from tensorflow.python.keras.regularizers import l1_l2
 
-from ..utils import preprocess_nxgraph
+from ..utils import preprocess_graph
 
 
 def l_2nd(beta):
@@ -79,7 +79,7 @@ class SDNE(object):
 
         self.graph = graph
         # self.g.remove_edges_from(self.g.selfloop_edges())
-        self.idx2node, self.node2idx = preprocess_nxgraph(self.graph)
+        self.idx2node, self.node2idx = preprocess_graph(self.graph)
 
         self.node_size = self.graph.number_of_nodes()
         self.hidden_size = hidden_size

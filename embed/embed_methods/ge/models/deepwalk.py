@@ -17,13 +17,15 @@ Reference:
 
 
 """
+from typing import Any
+from graph_tool import Graph
 from ..walker import RandomWalker
 from gensim.models import Word2Vec
-import pandas as pd
-
+from memory_profiler import profile
 
 class DeepWalk:
-    def __init__(self, graph, walk_length, num_walks, workers=1, get_node_data=False):
+    @profile
+    def __init__(self, graph: Graph, walk_length: int, num_walks: int, workers: int = 1, get_node_data: bool = False):
 
         self.graph = graph
         self.w2v_model = None
@@ -33,9 +35,10 @@ class DeepWalk:
         self.walker = RandomWalker(
             graph, p=1, q=1, get_node_data=get_node_data)
         self.sentences = self.walker.simulate_walks(
-            num_walks=num_walks, walk_length=walk_length, workers=workers, verbose=1)
+            num_walks=num_walks, walk_length=walk_length, workers=workers, verbosity_level=1)
 
-    def train(self, embed_size=128, window_size=5, workers=3, epochs=5, **kwargs):
+    @profile
+    def train(self, embed_size: int = 128, window_size: int = 5, workers: int = 3, epochs: int = 5, **kwargs: dict[str, Any]):
 
         kwargs["sentences"] = self.sentences
         kwargs["min_count"] = kwargs.get("min_count", 0)
@@ -53,17 +56,19 @@ class DeepWalk:
         self.w2v_model = model
         return model
 
+    @profile
     def get_embeddings(self, ):
         if self.w2v_model is None:
-            print("model not train")
+            print("model not trained")
             return {}
 
         self._embeddings = {}
         if self.get_node_data:
-            for node in self.graph.nodes(data=True):
-                self._embeddings[node[1]['data']] = self.w2v_model.wv[node[1]['data']]
+            for v in self.graph.iter_vertices():
+                word = self.graph.vp['word'][v]
+                self._embeddings[word] = self.w2v_model.wv[word]
         else:
-            for word in self.graph.nodes():
+            for word in self.graph.get_vertices():
                 self._embeddings[word] = self.w2v_model.wv[word]
 
         return self._embeddings

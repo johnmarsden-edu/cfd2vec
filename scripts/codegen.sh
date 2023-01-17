@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd schema;
+cd ../schema;
 
 sudo rm -rf codegen;
 

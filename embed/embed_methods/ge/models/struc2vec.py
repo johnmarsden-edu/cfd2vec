@@ -31,14 +31,14 @@ from joblib import Parallel, delayed
 from tqdm import tqdm
 
 from ..alias import create_alias_table
-from ..utils import partition_dict, preprocess_nxgraph
+from ..utils import partition_dict, preprocess_graph
 from ..walker import BiasedWalker
 
 
 class Struc2Vec():
     def __init__(self, graph, walk_length=10, num_walks=100, workers=1, verbose=0, stay_prob=0.3, opt1_reduce_len=True, opt2_reduce_sim_calc=True, opt3_num_layers=None, temp_path='./temp_struc2vec/', reuse=False, get_node_data=False):
         self.graph = graph
-        self.idx2node, self.node2idx = preprocess_nxgraph(graph)
+        self.idx2node, self.node2idx = preprocess_graph(graph)
         self.idx = list(range(len(self.idx2node)))
 
         self.opt1_reduce_len = opt1_reduce_len

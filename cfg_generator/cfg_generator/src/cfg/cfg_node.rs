@@ -52,23 +52,32 @@ impl<'a> Display for NodeType<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             NodeType::Source { name } => match name {
-                Some(name) => write!(f, "Source {}", name),
-                None => write!(f, "Anonymous Source"),
+                Some(name) => write!(f, "{} source", name),
+                None => write!(f, "anonymous source"),
             },
             NodeType::Sink { name } => match name {
-                Some(name) => write!(f, "Sink {}", name),
-                None => write!(f, "Anonymous Sink"),
+                Some(name) => write!(f, "{} sink", name),
+                None => write!(f, "anonymous sink"),
             },
-            NodeType::Statement { statement } => write!(f, "statement: {}", statement),
+            NodeType::Statement { statement } => write!(f, "{}", statement),
             NodeType::ControlNode {
                 control_type,
                 contents,
             } => {
-                write!(f, "control node: {:?} {:?}", control_type, contents)
+                let ct_out = match control_type {
+                    ControlType::Break(term)
+                    | ControlType::_Yield(term)
+                    | ControlType::Return(term)
+                    | ControlType::Continue(term) => term,
+                };
+                match contents {
+                    None => write!(f, "{}", ct_out),
+                    Some(term) => write!(f, "{} {}", ct_out, term),
+                }
             }
-            NodeType::Decision { decision } => write!(f, "decision: {}", decision),
+            NodeType::Decision { decision } => write!(f, "{}", decision),
             NodeType::Exception { term, statement } => {
-                write!(f, "throws using {}: {}", term, statement)
+                write!(f, "{} {}", term, statement)
             }
             NodeType::Label => write!(f, "Dummy Label Node"),
         }
@@ -115,11 +124,26 @@ impl<'a> Display for Edge<'a> {
         match self {
             Edge::Statement => write!(f, ""),
             Edge::Decision(direction) => {
-                write!(f, "{:#?}", direction)
+                write!(
+                    f,
+                    "{}",
+                    match direction {
+                        Direction::True => "true",
+                        Direction::False => "false",
+                    }
+                )
             }
             Edge::Exception { exception } => write!(f, "{}", exception),
             Edge::Label(edge_type) => {
-                write!(f, "{:#?}", edge_type)
+                write!(
+                    f,
+                    "{:#?}",
+                    match edge_type {
+                        LabelEdge::Continue => "continue",
+                        LabelEdge::Break => "break",
+                        LabelEdge::Next => "next",
+                    }
+                )
             }
         }
     }
