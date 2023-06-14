@@ -1,7 +1,5 @@
 [workspace]
 members = [
-    "fuzz",
     "cfg_generator",
-    "read_afl_crashes",
-    "petgraph-graphml"
+    "petgraph-graph-tool"
 ]

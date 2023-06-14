@@ -1,13 +1,28 @@
+name: gnn
 channels:
   - nodefaults
+  - file:///share/cfganalysis/jmmarsde/conda-bld
 dependencies:
+  - pyg
+  - pip
+  - conda-build
+  - anaconda::smart_open
+  - conda-forge::python=3.9
+  - conda-forge::psycopg2-binary
+  - conda-forge::python-dotenv
   - conda-forge::graph-tool
-  - pyg::pyg
+  - conda-forge::pygraphviz
+  - conda-forge::wandb
+  - conda-forge::optuna
+  - pyg::pytorch-sparse
+  - pyg::pytorch-cluster
   - anaconda::pandas
-  - pytorch::pytorch=1.13.1
-  - pytorch::torchvision
-  - pytorch::torchaudio
-  - pytorch::torchtext
-  - nvidia::cudatoolkit=11.7
-  - conda-forge::scikit-learn-intelex
-  - anaconda::lxml
+  - pytorch::pytorch=2.0
+  - pytorch::torchvision=0.15
+  - pytorch::torchaudio=2.0
+  - pytorch::torchtext=0.15
+  - nvidia::cudatoolkit
+  - pip:
+    - colorama
+    - termcolor
+    - humanize

@@ -3,7 +3,7 @@ from lxml import etree
 from gnn.graph_reader import get_all_graph_files
 from copy import deepcopy
 
-GRAPH_DIR = Path.cwd() / '..' / 'data' / 'generated_graphs'
+GRAPH_DIR = Path.cwd() / '..' / 'data' / 'generated_graphs' / 'raw'
 
 for num, graph in enumerate(get_all_graph_files(GRAPH_DIR)):
     if num % 10000 == 0:

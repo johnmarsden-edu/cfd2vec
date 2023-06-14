@@ -12,8 +12,8 @@ def write_files_to_output(output: DictWriter[str], files: dict[str, list[dict[st
     previous_index: dict[str, int] = {}
     index = 1
     while len(files) > 0:
-        repo_file_name, commits = random.choice(list(files.items()))
-        commit_data = commits.pop(0)
+        repo_file_name, graphs = random.choice(list(files.items()))
+        commit_data = graphs.pop(0)
 
 
         new_row: dict[str, str | int] = {
@@ -27,7 +27,7 @@ def write_files_to_output(output: DictWriter[str], files: dict[str, list[dict[st
         
         output.writerow(new_row)
 
-        if len(commits) == 0:
+        if len(graphs) == 0:
             del files[repo_file_name]
 
         previous_index[repo_file_name] = index
@@ -51,7 +51,7 @@ for assignment_data_file in repo_data_folder.glob('*.csv'):
         files: dict[str, list[dict[str, str]]] = {}
         current_prevs = {}
         prev_bodies: dict[str, set[str]] = {}
-        total_file_commits = 0
+        total_file_graphs = 0
         for row_idx, commit_data in enumerate(list(assignment_data), 1):
             repo_file_name = f'{commit_data["repo_name"]} {commit_data["file"]}'
             commit_data['provided'] = commit_data['provided'] == 'True'
@@ -69,9 +69,9 @@ for assignment_data_file in repo_data_folder.glob('*.csv'):
                 files[repo_file_name] = []
 
             files[repo_file_name].append(commit_data)
-            total_file_commits += 1
+            total_file_graphs += 1
 
-        print(f'It contains {total_file_commits} file commits')
+        print(f'It contains {total_file_graphs} file graphs')
         for key, value in files.items():
             duped: set[str] = set()
             deduped: list[dict[str, str]] = []
@@ -86,15 +86,15 @@ for assignment_data_file in repo_data_folder.glob('*.csv'):
 
         
         
-        dd_total_file_commits = sum(len(v) for v in files.values())
-        desired_file_commits = dd_total_file_commits / 10
-        total_validation_commits = 0
+        dd_total_file_graphs = sum(len(v) for v in files.values())
+        desired_file_graphs = dd_total_file_graphs / 10
+        total_validation_graphs = 0
         validation_files = {}
-        while total_validation_commits < desired_file_commits:
-            repo_file_name, commits = random.choice(list(files.items()))
-            validation_files[repo_file_name] = commits
+        while total_validation_graphs < desired_file_graphs:
+            repo_file_name, graphs = random.choice(list(files.items()))
+            validation_files[repo_file_name] = graphs
             del files[repo_file_name]
-            total_validation_commits += len(commits)
+            total_validation_graphs += len(graphs)
 
         print(f'Creating validation taguette file for {assignment_data_file.name}')
         write_files_to_output(validation_output_csv, validation_files)
@@ -102,6 +102,6 @@ for assignment_data_file in repo_data_folder.glob('*.csv'):
         print(f'Creating taguette file for {assignment_data_file.name}')
         write_files_to_output(output_csv, files)
 
-        print(f'{assignment_data_file.name} has {total_file_commits} total file commits which after deduping is {dd_total_file_commits}')
+        print(f'{assignment_data_file.name} has {total_file_graphs} total file graphs which after deduping is {dd_total_file_graphs}')
 
     print('--------------------------------------------------------------------------------')

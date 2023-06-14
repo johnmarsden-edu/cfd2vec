@@ -17,7 +17,7 @@ val_dir.mkdir(parents=True)
 code_ids = []
 
 
-def get_base_dir():
+def get_base_dir(splitter: float):
     if splitter < .2:
         return test_dir
     elif splitter < .4:
@@ -34,5 +34,5 @@ for directory in [data_dir / 'F19_All' / 'Train', data_dir / 'F19_All' / 'Test',
             id = row['CodeStateID']
             code = row['Code']
             splitter = random.random()
-            with open(get_base_dir() / f'{id}.java', 'w') as code_file:
+            with open(get_base_dir(splitter) / f'{id}.java', 'w') as code_file:
                 code_file.write(code)

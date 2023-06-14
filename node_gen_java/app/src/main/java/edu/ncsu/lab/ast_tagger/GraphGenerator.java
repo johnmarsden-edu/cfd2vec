@@ -5,6 +5,8 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.visitor.CloneVisitor;
 import com.google.common.io.Files;
 import com.opencsv.bean.CsvToBeanBuilder;
+import edu.ncsu.lab.ast_tagger.connection.MockServerConnection;
+import edu.ncsu.lab.ast_tagger.connection.ServerConnection;
 import org.javatuples.Pair;
 import org.javatuples.Triplet;
 import org.jetbrains.annotations.NotNull;
@@ -16,10 +18,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import static edu.ncsu.lab.ast_tagger.CfgGenServer.getConnection;
 import static edu.ncsu.lab.ast_tagger.CodeParser.createNewJavaParser;
 import static edu.ncsu.lab.ast_tagger.CodeParser.parseCode;
 import static edu.ncsu.lab.ast_tagger.cli.Tagger.getCanonicalizers;
+import static edu.ncsu.lab.ast_tagger.connection.CfgGenServer.getConnection;
 
 public class GraphGenerator {
 
@@ -66,10 +68,23 @@ public class GraphGenerator {
         }
     }
 
+    public static MockServerConnection countGraphs(File dataFile, boolean debugMode,
+                                                   ParserMode parserMode) {
+        MockServerConnection connection = new MockServerConnection();
+
+        createGraphs(connection, dataFile, debugMode, parserMode);
+        return connection;
+    }
 
     public static void createGraphs(File dataFile, boolean debugMode, ParserMode parserMode) {
         ServerConnection connection = getConnection();
 
+        createGraphs(connection, dataFile, debugMode, parserMode);
+    }
+
+
+    public static void createGraphs(ServerConnection connection, File dataFile, boolean debugMode
+            , ParserMode parserMode) {
         var parser = createNewJavaParser();
         var programStream = getPrograms(dataFile, parser, parserMode);
         String programGroup = Files.getNameWithoutExtension(dataFile.getName());

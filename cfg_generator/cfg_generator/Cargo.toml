@@ -16,14 +16,14 @@ anyhow = "1.0.59"
 itertools = "0.10.3"
 thiserror = "1.0.31"
 log = "0.4.17"
-log4rs = "1.1.1"
+log4rs = "1.2.0"
 clap = { version = "4.0.1", features = ["derive", "color", "suggestions"] }
 once_cell = "1.13.0"
 ctrlc = { version = "3.2.3", features = ["termination"] }
 
 # Stuff for CFG processing
 petgraph = { version="0.6.2", features=["stable_graph"] }
-petgraph-graphml = { path = "../petgraph-graphml" }
+petgraph-graph-tool = { path = "../petgraph-graph-tool" }
 
 # Stuff for server time
 bytes = "1.2.0"

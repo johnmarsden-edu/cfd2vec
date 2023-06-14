@@ -1,3 +1,4 @@
+from __future__ import annotations
 import itertools
 from typing import Any, Tuple
 
@@ -6,11 +7,10 @@ from joblib import Parallel, delayed
 from graph_tool.all import Graph
 import numpy as np
 from .utils import partition_np_array
-from memory_profiler import profile
 
 
 class RandomWalker:
-    @profile
+
     def __init__(
         self, graph: Graph, p: int = 1, q: int = 1, 
         use_rejection_sampling: int = 0, 
@@ -23,13 +23,14 @@ class RandomWalker:
         """
         # self.alias_vertices = None
         # self.alias_edges = None
+        self.rng = np.random.default_rng()
         self.graph = graph
         self.p = p
         self.q = q
         self.use_rejection_sampling = use_rejection_sampling
         self.get_node_data = get_node_data
 
-    @profile
+
     def deepwalk_walk(self, walk_length: int, start_node: int) -> list[str] | list[int]:
 
         walk = [start_node]
@@ -37,13 +38,13 @@ class RandomWalker:
         while len(walk) < walk_length:
             cur = self.graph.vertex(walk[-1])
             cur_neighbors: np.ndarray[Any, np.dtype[np.int32]] = self.graph.get_out_neighbors(cur)
-            if len(cur_neighbors) > 0:
-                neighbor = np.random.choice(cur_neighbors)
+            if cur_neighbors.size > 0:
+                neighbor = self.rng.choice(cur_neighbors)
                 walk.append(neighbor)
             else:
                 break
         if self.get_node_data:
-            node_data = self.graph.vp['word']
+            node_data = self.graph.vp['code']
             return [node_data[x] for x in walk]
         else:
             return walk
@@ -133,7 +134,7 @@ class RandomWalker:
     #     else:
     #         return walk
 
-    @profile
+
     def simulate_walks(self, num_walks: int, walk_length: int, workers: int =1, verbosity_level: int = 0) -> list[int | str]:
 
         G = self.graph
@@ -148,7 +149,7 @@ class RandomWalker:
 
         return walks
 
-    @profile
+
     def _simulate_walks(self, nodes: np.ndarray[Any, np.dtype[np.int32]], num_walks: int, walk_length: int) -> list[list[int] | list[str]]:
         walks: list[list[int] | list[str]] = []
         nodes = nodes.copy()

@@ -4,13 +4,14 @@ import com.github.javaparser.JavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.visitor.CloneVisitor;
 import edu.ncsu.lab.ast_tagger.*;
+import edu.ncsu.lab.ast_tagger.connection.ServerConnection;
 import picocli.CommandLine;
 
 import java.util.List;
 
-import static edu.ncsu.lab.ast_tagger.CfgGenServer.getConnection;
 import static edu.ncsu.lab.ast_tagger.CodeParser.createNewJavaParser;
 import static edu.ncsu.lab.ast_tagger.cli.Tagger.getCanonicalizers;
+import static edu.ncsu.lab.ast_tagger.connection.CfgGenServer.getConnection;
 
 @CommandLine.Command(
         name = "test", description = "Test a specific feature or --all",

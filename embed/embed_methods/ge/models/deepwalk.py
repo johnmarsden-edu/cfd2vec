@@ -17,30 +17,29 @@ Reference:
 
 
 """
-from typing import Any
+from __future__ import annotations
+from typing import Iterable
 from graph_tool import Graph
 from ..walker import RandomWalker
 from gensim.models import Word2Vec
-from memory_profiler import profile
 
 class DeepWalk:
-    @profile
-    def __init__(self, graph: Graph, walk_length: int, num_walks: int, workers: int = 1, get_node_data: bool = False):
-
-        self.graph = graph
+    def __init__(self, graphs: Iterable[Graph], walk_length: int, num_walks: int, workers: int = 1, get_node_data: bool = False):
+        self.graphs = graphs
         self.w2v_model = None
         self._embeddings = {}
         self.get_node_data = get_node_data
 
-        self.walker = RandomWalker(
-            graph, p=1, q=1, get_node_data=get_node_data)
-        self.sentences = self.walker.simulate_walks(
-            num_walks=num_walks, walk_length=walk_length, workers=workers, verbosity_level=1)
+        self.walk_args = {
+            'num_walks': num_walks, 
+            'walk_length': walk_length, 
+            'workers': workers, 
+            'verbosity_level': 1
+        }
 
-    @profile
-    def train(self, embed_size: int = 128, window_size: int = 5, workers: int = 3, epochs: int = 5, **kwargs: dict[str, Any]):
+    def train(self, embed_size: int = 128, window_size: int = 5, workers: int = 3, epochs: int = 5, **kwargs: int | Iterable[int | str]):
 
-        kwargs["sentences"] = self.sentences
+        kwargs["sentences"] = self
         kwargs["min_count"] = kwargs.get("min_count", 0)
         kwargs["vector_size"] = embed_size
         kwargs["sg"] = 1  # skip gram
@@ -56,19 +55,10 @@ class DeepWalk:
         self.w2v_model = model
         return model
 
-    @profile
-    def get_embeddings(self, ):
-        if self.w2v_model is None:
-            print("model not trained")
-            return {}
+    def __iter__(self):
+        for graph in self.graphs:
+            walker = RandomWalker(
+                graph, p=1, q=1, get_node_data=self.get_node_data)
+            print('Simulating walk over recently yielded graph')
+            yield from walker.simulate_walks(**self.walk_args)
 
-        self._embeddings = {}
-        if self.get_node_data:
-            for v in self.graph.iter_vertices():
-                word = self.graph.vp['word'][v]
-                self._embeddings[word] = self.w2v_model.wv[word]
-        else:
-            for word in self.graph.get_vertices():
-                self._embeddings[word] = self.w2v_model.wv[word]
-
-        return self._embeddings

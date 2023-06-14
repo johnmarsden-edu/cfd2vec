@@ -2,7 +2,7 @@ from pathlib import Path
 from gnn.graph_reader import get_all_graphs
 from typing import TextIO
 # Constants
-GRAPH_DIR = Path.cwd() / '..' / 'data' / 'generated_graphs'
+GRAPH_DIR = Path.cwd() / '..' / 'data' / 'generated_graphs' / 'raw'
 STRATS = ['NC', 'LC', 'VC', 'FC']
 
 

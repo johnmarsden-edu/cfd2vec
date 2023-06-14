@@ -134,9 +134,9 @@ def mine_commit(git_repo: Repo, commit: Commit, repo: NCSURepo, repo_path: Path)
         yield data
 
 
-def iterate_over_commits(git_repo: Repo, repo: NCSURepo, repo_path: Path):
+def iterate_over_graphs(git_repo: Repo, repo: NCSURepo, repo_path: Path):
     if git_repo.working_tree_dir:
-        for commit in git_repo.iter_commits(reverse=True):
+        for commit in git_repo.iter_graphs(reverse=True):
             yield from mine_commit(git_repo, commit, repo, repo_path)
 
 
@@ -183,7 +183,7 @@ def iterate_over_repos(repo_list: list[str], org: str, output_dir: Path):
             for repo in a_repos:
                 repo_path = temppath / repo.name
                 git_repo = fetch_repo(repo.name, repo_path, org)
-                files.extend(iterate_over_commits(git_repo, repo, repo_path))
+                files.extend(iterate_over_graphs(git_repo, repo, repo_path))
                 # From Brad:
                 # usually I use shutil.rmtree(repo_path), but that's broken on windows
                 # os.system(f'rm -rf {repo_path}')

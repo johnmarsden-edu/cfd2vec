@@ -1,7 +1,7 @@
 # Define the message passing functionality
 # for use in the directed graph that I am 
 # using
-
+from __future__ import annotations
 import torch
 from torch.nn import Linear, Parameter
 from torch_geometric.nn import MessagePassing

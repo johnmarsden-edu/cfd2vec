@@ -7,7 +7,7 @@ pub struct ProcessedGraph {
     /// The ID of this particular graph in a group of programs
     pub graph_id: String,
     /// The contents of this particular graph that will be written to a file
-    pub graph_contents: String,
+    pub graph_contents: Vec<u8>,
 }
 
 #[derive(Debug)]

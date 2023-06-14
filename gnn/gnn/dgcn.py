@@ -16,7 +16,7 @@
 # Third, it should do some kind of softmax or
 # something to determine probabilities that a 
 # student has a particular misconception.
-
+from __future__ import annotations
 import torch
 import torch.nn.functional as F
 import torch_geometric.nn as tgnn

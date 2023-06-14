@@ -15,7 +15,7 @@ import java.util.List;
         name = "tagger", mixinStandardHelpOptions = true, description =
         "A fully automated AST " + "Tagger for use in CFG " + "Generation", subcommands =
         {TaggerCountDuplicates.class, TaggerGenerateGraphs.class, TaggerTest.class,
-                TaggerTestCondConverter.class}
+                TaggerTestCondConverter.class, TaggerCalculateStats.class}
 )
 public class Tagger implements Runnable {
 

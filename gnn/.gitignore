@@ -4,4 +4,4 @@ wandb
 models
 processed_datasets
 conda-meta
-commits_metadata
+graphs_metadata

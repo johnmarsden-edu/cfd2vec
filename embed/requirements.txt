@@ -1,9 +1,7 @@
-psycopg
 python-dotenv
 joblib
 gensim
 numpy
 pandas
-tensorflow
 sklearn
 matplotlib

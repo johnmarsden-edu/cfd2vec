@@ -1,0 +1,29 @@
+[package]
+authors = ["John Marsden"]
+name = "petgraph-graph-tool"
+version = "0.0.1"
+
+description = "GraphTool output support for petgraph"
+documentation = "https://docs.rs/petgraph-graph-tool/"
+edition = "2021"
+keywords = ["graph-tool", "petgraph"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/profdoof/petgraph-graph-tool"
+
+include = ["src/**/*", "LICENSE-*", "README.*", "CHANGELOG.md"]
+
+[badges]
+maintenance = {status = "passively-maintained"}
+
+[dependencies]
+petgraph = "0.6"
+derive_more = "0.99"
+num-integer = "0.1"
+
+[dev-dependencies]
+version-sync = "0.9"
+tokio = {version="1.28.0", features=["full", "rt", "macros"]}
+nu-pretty-hex = "0.79.0"
+colored = "2.0.0"
+itertools = "0.10.5"

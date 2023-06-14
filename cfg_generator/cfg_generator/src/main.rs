@@ -23,7 +23,7 @@ enum Action {
 
 #[derive(Args, Debug)]
 struct Serve {
-    /// The output directory for the processed programs
+    /// The output directory for the processed programs and the vocabulary SQLite3 database
     output_dir: String,
     #[arg(long, short = 'c')]
     /// Whether to collect messages for fuzzing purposes

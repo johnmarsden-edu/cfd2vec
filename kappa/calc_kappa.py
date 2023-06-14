@@ -121,6 +121,19 @@ def calc(tags: click.File, tag_file_1: click.File, tag_file_2: click.File):
     click.echo(f'The probability that the coders were expected to be in agreement based on the distribution of tags is {p_e}')
     click.echo(f'Thus, the fuzzy kappa is {kappa}')
 
+    click.echo('An exact comparison follows: ')
+    click.echo(f'------------------------------')
+    for sf in shared_files:
+        sf_tags_1 = tagged_files_1[sf]
+        sf_tags_2 = tagged_files_2[sf]
+        shared_tags = sf_tags_1 & sf_tags_2
+        click.echo(f'File: {sf}')
+        click.echo(f'Tagger 1 # of tags: {len(sf_tags_1)}')
+        click.echo(f'Tagger 2 # of tags: {len(sf_tags_2)}')
+        click.echo(f'# of shared tags: {len(shared_tags)}')
+        click.echo(f'------------------------------')
+
+
 
 if __name__ == '__main__':
     calc()

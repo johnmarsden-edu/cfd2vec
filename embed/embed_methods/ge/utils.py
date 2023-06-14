@@ -1,4 +1,5 @@
-from typing import Any
+from __future__ import annotations
+from typing import Any, TYPE_CHECKING
 from graph_tool.all import Graph
 import numpy as np
 
@@ -11,8 +12,7 @@ def preprocess_graph(graph: Graph):
 
     return idx2vertex, vertex2idx
 
-
-int_array = np.ndarray[Any, np.dtype[np.int32]]
+int_array = None if not TYPE_CHECKING else np.ndarray[Any, np.dtype[np.int32]]
 
 def partition_np_array(vertices: int_array, num_workers: int) -> list[int_array]:
     return np.array_split(vertices, num_workers, 0)

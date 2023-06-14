@@ -11,7 +11,8 @@ use itertools::Itertools;
 use log::{debug, error, info, trace};
 use once_cell::sync::Lazy;
 use petgraph::stable_graph::StableDiGraph;
-use petgraph_graphml::GraphMl;
+use petgraph_graph_tool::attr_types::GtString;
+use petgraph_graph_tool::{GraphTool, GraphToolAttribute};
 use stream_cancel::Valve;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
@@ -85,7 +86,7 @@ async fn store_batch(output_dir: &Path, batch: &mut Vec<ProcessedProgram>) {
         .collect_vec();
     async move {
         if let Err(e) = store_programs(output_dir, batch).await {
-            error!("An error occurred while storing the program: {}", e);
+            error!("An error occurred while storing the programs: {}", e);
         }
     }
     .await;
@@ -96,12 +97,14 @@ pub async fn start(
     collect_mode: bool,
     port: u32,
 ) -> Result<(), CfgServerError> {
+    // Create the connection port
     let tcp_connection: String = format!("::0:{}", port);
     let bound_listener = TcpListener::bind(tcp_connection).await?;
     let address = bound_listener.local_addr()?;
     info!("Accepting connections on {:?}", address);
     let listener = TcpListenerStream::new(bound_listener);
 
+    // Create the save processing thread
     let (trigger, valve) = Valve::new();
     let (save_sender, save_receiver) = mpsc::channel::<ProcessedProgram>(100000);
     let save_stream = ReceiverStream::new(save_receiver);
@@ -272,17 +275,20 @@ fn process_graph(
     graph_id: String,
 ) -> Result<ProcessedGraph, MessageProcessingError> {
     trace!("Processing graph: {}", graph_id);
-    let graph_ml = GraphMl::new(&graph)
-        .pretty_print(true)
-        .export_edge_weights(Box::new(|edge| {
-            vec![("transfer".into(), format!("{}", edge).into())]
-        }))
-        .export_node_weights(Box::new(|node| {
-            vec![("code".into(), format!("{}", node.node_type).into())]
-        }));
+    let mut graph_tool = GraphTool::new(graph);
+    graph_tool
+        .add_edge_attribute::<GtString>(GraphToolAttribute::new(
+            "transfer",
+            Box::new(|edge| format!("{}", edge).into()),
+        ))
+        .add_node_attribute::<GtString>(GraphToolAttribute::new(
+            "code",
+            Box::new(|node| format!("{}", node.node_type).into()),
+        ));
+
     Ok(ProcessedGraph {
         graph_id,
-        graph_contents: graph_ml.to_string(),
+        graph_contents: graph_tool.to_bytes()?,
     })
 }
 
